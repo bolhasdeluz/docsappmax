@@ -1078,11 +1078,11 @@
           <div class="c-group">
             <label>Configuração de Saque</label>
             <select id="c_statusSaque">
-              <option value="cobrar">Cobrar Taxa Fixa</option>
-              <option value="isento" selected>Não contém / Isento</option>
+              <option value="cobrar" selected>Cobrar Taxa Fixa (R$ 3,67)</option>
+              <option value="isento">Não contém / Isento</option>
             </select>
           </div>
-          <div class="c-group" id="c_groupValorSaque" style="display:none;">
+          <div class="c-group" id="c_groupValorSaque">
             <label>Valor da Taxa de Saque (R$)</label>
             <input type="text" id="c_taxaSaque" value="3,67">
           </div>
@@ -2935,8 +2935,8 @@ function calcInit() {
   if (!g('c_vendaBruta') || g('c_vendaBruta').dataset.calcInited) return;
   g('c_vendaBruta').dataset.calcInited = '1';
 
-  const pctIds = ['c_taxaParc','c_taxaProc','c_taxaGar','c_taxaAnte','c_taxaSaque'];
-  const moneyIds = ['c_vendaBruta','c_taxaGate'];
+  const pctIds = ['c_taxaParc','c_taxaProc','c_taxaGar','c_taxaAnte'];
+  const moneyIds = ['c_vendaBruta','c_taxaGate','c_taxaSaque'];
 
   moneyIds.forEach(id => {
     const el = g(id);
@@ -2959,6 +2959,7 @@ function calcInit() {
 
   // Init masks
   if (g('c_vendaBruta') && g('c_vendaBruta').value) g('c_vendaBruta').value = calcMaskMoney(g('c_vendaBruta').value);
+  if (g('c_taxaSaque') && g('c_taxaSaque').value) g('c_taxaSaque').value = calcMaskMoney(g('c_taxaSaque').value);
   pctIds.forEach(id => { if(g(id) && g(id).value) g(id).value = calcMaskPct(g(id).value); });
 
   calcUpdate();
@@ -3017,6 +3018,8 @@ function calcSetMode(modo) {
     if (proc) proc.value = '1,00 %';
     const gate = document.getElementById('c_taxaGate');
     if (gate) gate.value = calcMaskMoney('99');
+    const gar = document.getElementById('c_taxaGar');
+    if (gar) gar.value = '0,00 %';
     const repassar = document.getElementById('c_repassarJuros');
     if (repassar) repassar.value = 'nao';
     const modeloSel = document.getElementById('c_modeloCalculo');
@@ -3028,6 +3031,8 @@ function calcSetMode(modo) {
     if (proc) proc.value = '4,99 %';
     const gate = document.getElementById('c_taxaGate');
     if (gate) gate.value = calcMaskMoney('99');
+    const gar = document.getElementById('c_taxaGar');
+    if (gar) gar.value = '7,50 %';
   }
 
   calcUpdate();
