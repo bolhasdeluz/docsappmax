@@ -725,24 +725,13 @@ Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca in
       if (!textoFinal.trim()) throw new Error('Não foi possível extrair texto do PDF.');
     }
 
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const resp = await fetch('https://sparkling-grass-bb3d.bolhasdeluz.workers.dev', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Extraia os dados do seguinte texto:\n\n${textoFinal}` }
-        ]
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto: textoFinal })
     });
 
-    if (!resp.ok) throw new Error(`Erro ${resp.status} na API Groq`);
+    if (!resp.ok) throw new Error(`Erro ${resp.status} no Worker`);
 
     const data = await resp.json();
     const dados = JSON.parse(data.choices[0].message.content);
