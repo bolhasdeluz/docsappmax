@@ -198,6 +198,34 @@
     .btn-manual:hover { background: var(--purple-dim); }
     .btn-generate { background: var(--green); color: white; flex: 1; justify-content: center; }
     .btn-generate:hover { background: #165c38; }
+    .btn-text { background: #1e40af; color: white; flex: 1; justify-content: center; }
+    .btn-text:hover { background: #1d4ed8; }
+
+    /* FORMAT MODAL */
+    #format-modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(26,22,37,0.6); z-index: 9998;
+      display: none; justify-content: center; align-items: center;
+    }
+    #format-modal.visible { display: flex; }
+    .format-box {
+      background: white; border-radius: 14px; padding: 28px 32px;
+      text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+      max-width: 380px; width: 90%;
+    }
+    .format-box h3 { color: var(--purple); margin-bottom: 6px; font-size: 18px; }
+    .format-box p { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+    .format-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .format-opt {
+      border: 2px solid var(--border); border-radius: 10px; padding: 18px 12px;
+      cursor: pointer; transition: all 0.15s; background: white;
+    }
+    .format-opt:hover { border-color: var(--purple); background: var(--purple-dim); }
+    .format-opt-icon { font-size: 28px; margin-bottom: 8px; }
+    .format-opt-label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .format-opt-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .format-cancel { margin-top: 14px; font-size: 12px; color: var(--muted); cursor: pointer; }
+    .format-cancel:hover { color: var(--text); }
     .btn-back { background: transparent; border: 1px solid var(--border); color: var(--muted); }
     .btn-back:hover { border-color: var(--purple); color: var(--purple); }
 
@@ -551,7 +579,7 @@
     <div class="screen-sub">Defina o papel de cada pessoa no documento e clique em gerar</div>
     <div id="review-cards"></div>
     <div class="btn-row" style="margin-top: 20px;">
-      <button class="btn btn-generate" onclick="gerarDocsFromReview()">📥 Gerar PDFs</button>
+      <button class="btn btn-generate" onclick="abrirFormatModal('review')">📥 Gerar documentos</button>
     </div>
   </div>
 
@@ -569,7 +597,7 @@
       </div>
     </div>
     <div class="btn-row" style="margin-top:16px;">
-      <button class="btn btn-generate" onclick="gerarDocumentos()">📥 Gerar PDFs mesmo assim</button>
+      <button class="btn btn-generate" onclick="abrirFormatModal('pendencias')">📥 Gerar mesmo assim</button>
     </div>
   </div>
 
@@ -759,11 +787,32 @@
     </div>
 
     <div class="btn-row" style="margin-top: 20px;">
-      <button class="btn btn-generate" onclick="gerarDocumentos()">📥 Gerar PDFs</button>
+      <button class="btn btn-generate" onclick="abrirFormatModal('form')">📥 Gerar documentos</button>
     </div>
   </div>
 
 </div><!-- /page -->
+
+<!-- FORMAT MODAL -->
+<div id="format-modal">
+  <div class="format-box">
+    <h3>Formato de download</h3>
+    <p>Escolha como deseja salvar o documento</p>
+    <div class="format-options">
+      <div class="format-opt" onclick="confirmarFormato('pdf')">
+        <div class="format-opt-icon">📄</div>
+        <div class="format-opt-label">PDF</div>
+        <div class="format-opt-sub">Pronto para assinar</div>
+      </div>
+      <div class="format-opt" onclick="confirmarFormato('txt')">
+        <div class="format-opt-icon">📝</div>
+        <div class="format-opt-label">Texto (.txt)</div>
+        <div class="format-opt-sub">Para editar antes</div>
+      </div>
+    </div>
+    <div class="format-cancel" onclick="fecharFormatModal()">Cancelar</div>
+  </div>
+</div>
 
 <script>
 // ============================================================
@@ -819,7 +868,12 @@ function selecionarDoc(tipo) {
   configurarGrupos(tipo);
   // Mostra segundo upload só para PJ
   const qsaContainer = document.getElementById('upload-qsa-container');
-  if (qsaContainer) qsaContainer.classList.toggle('hidden', tipo !== 'PJ');
+  if (qsaContainer) qsaContainer.classList.toggle('hidden', tipo !== 'PJ' && tipo !== 'SAQUE');
+  // Update QSA label for SAQUE
+  const qsaLbl = document.getElementById('upload-qsa-label');
+  if (qsaLbl) qsaLbl.textContent = tipo === 'SAQUE' 
+    ? 'Clique para selecionar o Cartão CNPJ (dados da empresa)' 
+    : 'Clique para selecionar o Cartão CNPJ (QSA)';
   irTela(2);
 }
 
@@ -969,14 +1023,14 @@ function detectarEntidades(dados) {
         fixedLabel: '🏢 Empresa (Autorizante)', fixedRole: true
       },
       {
-        id: 'rep', tipo: 'pessoa', role: 'rep',
+        id: 'rep', tipo: 'pessoa_saque', role: 'rep',
         nome: dados.rep_nome || dados.p1_nome || 'Representante Legal',
         doc: (dados.rep_cpf||dados.p1_cpf) ? 'CPF: ' + (dados.rep_cpf||dados.p1_cpf) : '',
-        campos: { nome: dados.rep_nome||dados.p1_nome||'', cpf: dados.rep_cpf||dados.p1_cpf||'',
-          nac: 'BRASILEIRO(A)', cep: dados.rep_cep||dados.p1_cep||'',
-          rua: dados.rep_rua||dados.p1_rua||'', num: dados.rep_num||dados.p1_num||'',
-          comp: dados.rep_comp||dados.p1_comp||'', bairro: dados.rep_bairro||dados.p1_bairro||'',
-          cid: dados.rep_cid||dados.p1_cid||'', uf: dados.rep_uf||dados.p1_uf||'' },
+        campos: {
+          nome: dados.rep_nome||dados.p1_nome||'',
+          cpf:  dados.rep_cpf||dados.p1_cpf||'',
+          nac:  'BRASILEIRO(A)'
+        },
         fixedLabel: '👤 Representante Legal', fixedRole: true
       }
     ];
@@ -990,7 +1044,7 @@ function detectarEntidades(dados) {
         nome: dados.rep_nome || 'Representante Legal',
         doc: dados.rep_cpf ? 'CPF: ' + dados.rep_cpf : '',
         campos: {
-          nome: dados.rep_nome||'', cpf: dados.rep_cpf||'',
+          nome: dados.rep_nome||'', cpf: dados.rep_cpf||'', nac: 'BRASILEIRO(A)',
           cep: dados.rep_cep||'', rua: dados.rep_rua||'', num: dados.rep_num||'',
           comp: dados.rep_comp||'', bairro: dados.rep_bairro||'',
           cid: dados.rep_cid||'', uf: dados.rep_uf||''
@@ -1002,7 +1056,7 @@ function detectarEntidades(dados) {
         nome: dados.men_nome || 'Menor Autorizado',
         doc: dados.men_cpf ? 'CPF: ' + dados.men_cpf : '',
         campos: {
-          nome: dados.men_nome||'', cpf: dados.men_cpf||'',
+          nome: dados.men_nome||'', cpf: dados.men_cpf||'', nac: 'BRASILEIRO(A)',
           cep: dados.men_cep||'', rua: dados.men_rua||'', num: dados.men_num||'',
           comp: dados.men_comp||'', bairro: dados.men_bairro||'',
           cid: dados.men_cid||'', uf: dados.men_uf||''
@@ -1074,6 +1128,12 @@ const CAMPOS_OBRIGATORIOS_PJ = [
 ];
 
 function verificarFaltando(ent) {
+  if (ent.tipo === 'pessoa_saque') {
+    return [
+      { chave: 'nome', label: 'Nome' },
+      { chave: 'cpf',  label: 'CPF'  }
+    ].filter(c => !ent.campos[c.chave] || !ent.campos[c.chave].trim()).map(c => c.label);
+  }
   const campos = ent.tipo === 'empresa' ? CAMPOS_OBRIGATORIOS_PJ : CAMPOS_OBRIGATORIOS_PF;
   return campos
     .filter(c => !ent.campos[c.chave] || ent.campos[c.chave].toString().trim() === '')
@@ -1113,6 +1173,30 @@ function toggleMesmoEndereco(checked, menId) {
 
 function buildFieldsGrid(ent) {
   const isPJ = ent.tipo === 'empresa';
+
+  // Representante do SAQUE — só nome, CPF e nacionalidade
+  if (ent.tipo === 'pessoa_saque') {
+    const campos = [
+      { key: 'nome', label: 'Nome Completo', full: true },
+      { key: 'cpf',  label: 'CPF' },
+      { key: 'nac',  label: 'Nacionalidade', default: 'BRASILEIRO(A)' },
+    ];
+    return `<div class="fields-grid">` + campos.map(c => {
+      const val = ent.campos[c.key] || c.default || '';
+      if (val && c.default && !ent.campos[c.key]) ent.campos[c.key] = val;
+      const missing = !val && !c.optional ? ' missing' : '';
+      return `<div class="field-inline ${c.full ? 'field-full' : ''}">
+        <label>${c.label}${!c.optional && !val ? ' ⚠' : ''}</label>
+        <input type="text" 
+          id="field_${ent.id}_${c.key}" 
+          value="${val.toString().replace(/"/g,'&quot;')}"
+          placeholder="${c.optional ? 'Opcional' : 'Preencher'}"
+          class="${missing}"
+          oninput="atualizarCampoEnt('${ent.id}','${c.key}',this)">
+      </div>`;
+    }).join('') + `</div>`;
+  }
+
   const campos = isPJ ? [
     { key: 'nome',   label: 'Razão Social', full: true  },
     { key: 'cnpj',   label: 'CNPJ'                      },
@@ -1274,8 +1358,23 @@ function gerarDocsFromReview() {
   if (docAtual === 'SAQUE') {
     const pj  = entidadesExtraidas.find(e => e.id === 'pj');
     const rep = entidadesExtraidas.find(e => e.id === 'rep');
-    if (pj)  { ['nome','cnpj','cep','rua','num','comp','bairro','cid','uf'].forEach(k => { const el = document.getElementById('pj_'+k); if (el) el.value = (pj.campos[k]||'').toUpperCase(); }); }
-    if (rep) { ['nome','cpf','cep','rua','num','comp','bairro','cid','uf'].forEach(k => { const el = document.getElementById('p1_'+k); if (el) el.value = (rep.campos[k]||'').toUpperCase(); }); }
+    // Sync cards → form fields
+    if (pj) {
+      ['nome','cnpj','cep','rua','num','comp','bairro','cid','uf'].forEach(k => {
+        const cardEl = document.getElementById('field_pj_' + k);
+        if (cardEl) pj.campos[k] = cardEl.value;
+        const formEl = document.getElementById('pj_' + k);
+        if (formEl) formEl.value = (pj.campos[k]||'').toUpperCase();
+      });
+    }
+    if (rep) {
+      ['nome','cpf','nac'].forEach(k => {
+        const cardEl = document.getElementById('field_rep_' + k);
+        if (cardEl) rep.campos[k] = cardEl.value;
+      });
+      const p1Nome = document.getElementById('p1_nome'); if (p1Nome) p1Nome.value = (rep.campos.nome||'').toUpperCase();
+      const p1Cpf  = document.getElementById('p1_cpf');  if (p1Cpf)  p1Cpf.value  = (rep.campos.cpf||'').toUpperCase();
+    }
     const pendencias = [];
     [pj, rep].filter(Boolean).forEach(ent => {
       const faltando = verificarFaltando(ent);
@@ -1577,7 +1676,241 @@ function dataExtenso() {
 // ============================================================
 // GERAÇÃO DE PDF
 // ============================================================
+// ============================================================
+// FORMAT MODAL
+// ============================================================
+let formatPendingAction = null;
+let formatoAtual = 'pdf'; // 'pdf' or 'txt'
+
+function abrirFormatModal(acao) {
+  formatPendingAction = acao;
+  document.getElementById('format-modal').classList.add('visible');
+}
+
+function fecharFormatModal() {
+  document.getElementById('format-modal').classList.remove('visible');
+  formatPendingAction = null;
+}
+
+function confirmarFormato(formato) {
+  formatoAtual = formato;
+  fecharFormatModal();
+  if (formatPendingAction === 'review') gerarDocsFromReview();
+  else gerarDocumentos();
+}
+
+// ============================================================
+// GERAÇÃO DE TEXTO
+// ============================================================
+function gerarTexto(tipo) {
+  const isPF = tipo.includes('PF');
+  const isProc = tipo.includes('PROC');
+
+  const pjEnt  = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'pj')  : null;
+  const repEnt = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'rep') : null;
+
+  const g = (ent, key, fallbackId) => {
+    const cardEl = ent ? document.getElementById('field_' + ent.id + '_' + key) : null;
+    if (cardEl && cardEl.value) return cardEl.value.toUpperCase();
+    if (ent && ent.campos && ent.campos[key]) return ent.campos[key].toString().toUpperCase();
+    return v(fallbackId);
+  };
+
+  const p2on = document.getElementById('toggle_p2')?.checked;
+  const p3on = document.getElementById('toggle_p3')?.checked;
+  const s2on = document.getElementById('toggle_s2')?.checked;
+  const s3on = document.getElementById('toggle_s3')?.checked;
+
+  let texto = '';
+
+  if (tipo === 'MENOR') {
+    const rep = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'rep') : null;
+    const men = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'men') : null;
+    const gR = (k, fb) => g(rep, k, fb);
+    const gM = (k, fb) => g(men, k, fb);
+    const compR = gR('comp','r_comp'); const compM = gM('comp','m_comp');
+
+    texto = `TERMO DE AUTORIZAÇÃO E RESPONSABILIDADE
+
+`;
+    texto += `REPRESENTANTE LEGAL:
+`;
+    texto += `Nome: ${gR('nome','r_nome')}
+`;
+    texto += `Documento de Identificação (CPF): ${gR('cpf','r_cpf')}
+`;
+    texto += `Endereço: ${gR('rua','r_rua')}, ${gR('num','r_num')}${compR ? ', ' + compR : ''}, ${gR('bairro','r_bairro')} - ${gR('cid','r_cid')}/${gR('uf','r_uf')} - ${gR('cep','r_cep')}
+
+`;
+    texto += `MENOR AUTORIZADO:
+`;
+    texto += `Nome: ${gM('nome','m_nome')}
+`;
+    texto += `Documento de Identificação (CPF): ${gM('cpf','m_cpf')}
+`;
+    texto += `Endereço: ${gM('rua','m_rua')}, ${gM('num','m_num')}${compM ? ', ' + compM : ''}, ${gM('bairro','m_bairro')} - ${gM('cid','m_cid')}/${gM('uf','m_uf')} - ${gM('cep','m_cep')}
+
+`;
+    texto += `Este termo tem como objeto a autorização, desde o momento do credenciamento na Plataforma Appmax e por tempo indeterminado, pelo representante legal acima qualificado, para que o menor utilize a Plataforma, reconhecendo as diretrizes estabelecidas nos Termos de Uso e Política de Privacidade da Appmax, disponíveis no site oficial da Appmax https://appmax.com.br
+
+`;
+    texto += `O representante legal, ao assinar este termo, se compromete a:
+a) Supervisionar o uso da Plataforma Appmax pelo menor.
+b) Assumir integral responsabilidade por quaisquer ações realizadas pelo menor na plataforma.
+c) Arcar com eventuais danos ou prejuízos, isentando a Appmax de qualquer responsabilidade.
+
+`;
+    texto += `Local e Data: ${gR('cid','r_cid')}/${gR('uf','r_uf')}, ${dataExtenso()}.
+
+`;
+    texto += `Assinatura do Representante Legal: ${gR('nome','r_nome')}`;
+    baixarTxt(texto, `TERMO_MENOR_${(gM('nome','m_nome')||'doc').replace(/[^A-Z0-9]/g,'_')}.txt`);
+    return;
+  }
+
+  if (tipo === 'SAQUE') {
+    const razao = g(pjEnt,'nome','pj_nome'), cnpj = g(pjEnt,'cnpj','pj_cnpj');
+    const rua = g(pjEnt,'rua','pj_rua'), num = g(pjEnt,'num','pj_num');
+    const comp = g(pjEnt,'comp','pj_comp'), bairro = g(pjEnt,'bairro','pj_bairro');
+    const cidade = g(pjEnt,'cid','pj_cid'), uf = g(pjEnt,'uf','pj_uf'), cep = g(pjEnt,'cep','pj_cep');
+    const repNome = g(repEnt,'nome','p1_nome'), repCpf = g(repEnt,'cpf','p1_cpf');
+    const compStr = comp && comp !== '-' ? ' - ' + comp : '';
+    const v2str = v('sq_valor2') ? ` E ${v('sq_valor2')} (${v('sq_extenso2')})` : '';
+
+    texto = `TERMO DE AUTORIZAÇÃO E QUITAÇÃO
+
+AUTORIZANTE:
+`;
+    texto += `Razão Social: ${razao}
+CNPJ: ${cnpj}
+`;
+    texto += `Endereço: ${rua}, ${num}${compStr}, ${bairro} - ${cidade}/${uf} - CEP ${cep}
+`;
+    texto += `Representante legal: ${repNome}, portador do CPF n.º ${repCpf}
+
+`;
+    texto += `Considerando que:
+- O Autorizante era credenciado na Plataforma APPMAX...
+- O CNPJ encontra-se baixado perante a Receita Federal...
+- Por obrigação regulatória, o repasse deve ser ao domicílio bancário do beneficiário...
+
+`;
+    texto += `O autorizante autoriza expressamente que a APPMAX realize o depósito para saque ${v('sq_valor1')} (${v('sq_extenso1')})${v2str} na seguinte conta:
+`;
+    texto += `- CPF: ${v('sq_cpf_conta')}
+- Tipo: ${v('sq_tipo_conta')}
+- Banco: ${v('sq_banco')}
+- Agência: ${v('sq_agencia')}
+- Conta: ${v('sq_conta')}
+- PIX: ${v('sq_pix')}
+
+`;
+    texto += `Ao receber os valores, o AUTORIZANTE dá plena quitação à APPMAX.
+
+`;
+    texto += `${cidade}/${uf}, ${dataExtenso()}`;
+    baixarTxt(texto, `TERMO_SAQUE_${(razao||'doc').replace(/[^A-Z0-9]/g,'_')}.txt`);
+    return;
+  }
+
+  // PJ / PF
+  const isPJdoc = !isPF;
+  const titulo = isProc ? 'PROCURAÇÃO PARTICULAR' : 'TERMO DE RESPONSABILIDADE';
+  texto = titulo + '
+
+';
+  texto += (isProc ? 'OUTORGANTE:' : 'PARCEIRO:') + '
+';
+
+  if (isPF) {
+    texto += `Nome: ${v('p1_nome')}
+Nacionalidade: ${v('p1_nac')}
+CPF: ${v('p1_cpf')}
+Endereço: ${v('p1_rua')}, ${v('p1_num')}${v('p1_comp') ? ' / ' + v('p1_comp') : ''}, ${v('p1_bairro')} - ${v('p1_cid')}/${v('p1_uf')} - CEP ${v('p1_cep')}
+
+`;
+  } else {
+    texto += `Razão Social: ${v('pj_nome')}
+CNPJ: ${v('pj_cnpj')}
+Endereço: ${v('pj_rua')}, ${v('pj_num')}${v('pj_comp') ? ' / ' + v('pj_comp') : ''}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}
+`;
+    let rep = `Representada por ${v('p1_nome')}, CPF ${v('p1_cpf')}`;
+    if (p2on) rep += `, ${v('p2_nome')}, CPF ${v('p2_cpf')}`;
+    if (p3on) rep += ` e ${v('p3_nome')}, CPF ${v('p3_cpf')}`;
+    texto += rep + '.
+
+';
+  }
+
+  const lblS = isProc ? 'OUTORGADO:' : 'TERCEIRO OPERADOR:';
+  texto += lblS + '
+';
+  const addSocio = (pre) => {
+    if (!v(pre+'_nome')) return;
+    texto += `Nome: ${v(pre+'_nome')}
+Nacionalidade: ${v(pre+'_nac')}
+CPF: ${v(pre+'_cpf')}
+Endereço: ${v(pre+'_rua')}, ${v(pre+'_num')}${v(pre+'_comp') ? ' / ' + v(pre+'_comp') : ''}, ${v(pre+'_bairro')} - ${v(pre+'_cid')}/${v(pre+'_uf')} - CEP ${v(pre+'_cep')}
+
+`;
+  };
+  addSocio('s1');
+  if (s2on) addSocio('s2');
+  if (s3on) addSocio('s3');
+
+  if (isProc) {
+    texto += `PODERES:
+Pelo presente instrumento, a OUTORGANTE nomeia o OUTORGADO para acessar, gerir e administrar todos os negócios relacionados à Plataforma Appmax (CNPJ nº 27.000.511/0001-60). Mandato por prazo indeterminado.
+
+`;
+  } else {
+    texto += `Este Termo tem por objeto a utilização da plataforma Appmax pelo Terceiro Operador em nome do Parceiro, conforme Termos de Uso em https://appmax.com.br
+
+`;
+  }
+
+  const loc = isPF ? `${v('p1_cid')}/${v('p1_uf')}` : `${v('pj_cid')}/${v('pj_uf')}`;
+  texto += `Local e Data: ${loc}, ${dataExtenso()}.
+
+`;
+  texto += `Assinatura do ${isProc ? 'Outorgante' : 'PARCEIRO'}: ${v('p1_nome')}
+`;
+  if (!isPF && p2on) texto += `Assinatura do ${isProc ? 'Outorgante' : 'PARCEIRO'}: ${v('p2_nome')}
+`;
+  if (!isPF && p3on) texto += `Assinatura do ${isProc ? 'Outorgante' : 'PARCEIRO'}: ${v('p3_nome')}
+`;
+  if (!isProc || isPF) {
+    texto += `
+Assinatura do ${isProc ? 'OUTORGADO' : 'TERCEIRO OPERADOR'}: ${v('s1_nome')}
+`;
+    if (s2on) texto += `Assinatura do ${isProc ? 'OUTORGADO' : 'TERCEIRO OPERADOR'}: ${v('s2_nome')}
+`;
+    if (s3on) texto += `Assinatura do ${isProc ? 'OUTORGADO' : 'TERCEIRO OPERADOR'}: ${v('s3_nome')}
+`;
+  }
+
+  const nome = isPF ? v('p1_nome') : v('pj_nome');
+  const prefixo = isProc ? 'PROCURACAO' : 'TERMO';
+  baixarTxt(texto, `${prefixo}_${(nome||'doc').replace(/[^A-Z0-9]/g,'_')}.txt`);
+}
+
+function baixarTxt(texto, filename) {
+  const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function gerarDocumentos() {
+  if (formatoAtual === 'txt') {
+    if (docAtual === 'MENOR') { gerarTexto('MENOR'); return; }
+    if (docAtual === 'SAQUE') { gerarTexto('SAQUE'); return; }
+    if (docAtual === 'PJ') { gerarTexto('PROC_PJ'); setTimeout(() => gerarTexto('TERMO_PJ'), 400); }
+    if (docAtual === 'PF') { gerarTexto('PROC_PF'); setTimeout(() => gerarTexto('TERMO_PF'), 400); }
+    return;
+  }
   if (typeof window.jspdf === 'undefined') { alert('jsPDF não carregou. Verifique a conexão.'); return; }
   if (docAtual === 'MENOR') { gerarPDF('MENOR'); return; }
   if (docAtual === 'SAQUE') { gerarPDF('SAQUE'); return; }
@@ -1686,9 +2019,12 @@ function gerarPDF(tipo) {
   // ---- SAQUE ----
   if (tipo === 'SAQUE') {
     // Pega dados da empresa/rep dos cards se disponível
-    const pjEnt = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'pj') : null;
+    const pjEnt  = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'pj')  : null;
     const repEnt = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'rep') : null;
     const g = (ent, key, fallbackId) => {
+      // try card field first, then ent.campos, then form field
+      const cardEl = ent ? document.getElementById('field_' + ent.id + '_' + key) : null;
+      if (cardEl && cardEl.value) return cardEl.value.toUpperCase();
       if (ent && ent.campos[key]) return ent.campos[key].toString().toUpperCase();
       return v(fallbackId);
     };
