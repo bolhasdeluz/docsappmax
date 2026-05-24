@@ -995,7 +995,7 @@
       <div class="c-block">
         <div class="c-title">1. Dados Fundamentais da Venda</div>
         <div class="c-grid">
-          <div class="c-group">
+          <div class="c-group" id="c_groupTipoValor">
             <label>Tipo de Valor Informado</label>
             <select id="c_tipoOrigemValor">
               <option value="checkout_com_juros" selected>Valor Total do Pedido (com juros inclusos)</option>
@@ -1003,10 +1003,10 @@
             </select>
           </div>
           <div class="c-group">
-            <label>Valor Digitado (R$)</label>
+            <label id="c_labelVenda">Valor Digitado (R$)</label>
             <input type="text" id="c_vendaBruta" value="" placeholder="0,00">
           </div>
-          <div class="c-group">
+          <div class="c-group" id="c_groupParcelas">
             <label>Nº de Parcelas do Pedido</label>
             <select id="c_numParcelas">
               <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option>
@@ -2986,15 +2986,27 @@ function calcSetMode(modo) {
   const badge = document.getElementById('c_pixBadge');
   if (badge) badge.style.display = isPix ? 'inline-block' : 'none';
 
+  // Card 1 — hide tipo/parcelas, show only "Total Pago" for PIX
+  const groupTipoValor = document.getElementById('c_groupTipoValor');
+  const groupParcelas  = document.getElementById('c_groupParcelas');
+  const labelVenda     = document.getElementById('c_labelVenda');
+  if (groupTipoValor) groupTipoValor.style.display = isPix ? 'none' : '';
+  if (groupParcelas)  groupParcelas.style.display  = isPix ? 'none' : '';
+  if (labelVenda)     labelVenda.textContent = isPix ? 'Total Pago (R$)' : 'Valor Digitado (R$)';
+
   if (isPix) {
+    // Força 1x sem juros
+    const numParc = document.getElementById('c_numParcelas');
+    if (numParc) numParc.value = '1';
+    const tipoOrigem = document.getElementById('c_tipoOrigemValor');
+    if (tipoOrigem) tipoOrigem.value = 'checkout_com_juros';
     // Configura taxas PIX
     const proc = document.getElementById('c_taxaProc');
     const gate = document.getElementById('c_taxaGate');
     const repassar = document.getElementById('c_repassarJuros');
     if (proc) proc.value = '1,00 %';
     if (gate) gate.value = calcMaskMoney('99');
-    if (repassar) repassar.value = 'nao'; // sem parcelamento
-    // Zera parcelamento
+    if (repassar) repassar.value = 'nao';
     const modeloSel = document.getElementById('c_modeloCalculo');
     if (modeloSel) modeloSel.value = 'auto_mensal';
     const taxaParc = document.getElementById('c_taxaParc');
@@ -3005,6 +3017,7 @@ function calcSetMode(modo) {
     const gate = document.getElementById('c_taxaGate');
     if (proc) proc.value = '4,99 %';
     if (gate) gate.value = calcMaskMoney('99');
+    if (labelVenda) labelVenda.textContent = 'Valor Digitado (R$)';
   }
 
   calcUpdate();
