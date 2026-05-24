@@ -956,6 +956,32 @@ Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca in
 let entidadesExtraidas = [];
 
 function detectarEntidades(dados) {
+  // SAQUE — empresa + representante (banking filled manually after)
+  if (docAtual === 'SAQUE') {
+    return [
+      {
+        id: 'pj', tipo: 'empresa', role: 'pj',
+        nome: dados.pj_nome || 'Empresa',
+        doc: dados.pj_cnpj ? 'CNPJ: ' + dados.pj_cnpj : '',
+        campos: { nome: dados.pj_nome||'', cnpj: dados.pj_cnpj||'', cep: dados.pj_cep||'',
+          rua: dados.pj_rua||'', num: dados.pj_num||'', comp: dados.pj_comp||'',
+          bairro: dados.pj_bairro||'', cid: dados.pj_cid||'', uf: dados.pj_uf||'' },
+        fixedLabel: '🏢 Empresa (Autorizante)', fixedRole: true
+      },
+      {
+        id: 'rep', tipo: 'pessoa', role: 'rep',
+        nome: dados.rep_nome || dados.p1_nome || 'Representante Legal',
+        doc: (dados.rep_cpf||dados.p1_cpf) ? 'CPF: ' + (dados.rep_cpf||dados.p1_cpf) : '',
+        campos: { nome: dados.rep_nome||dados.p1_nome||'', cpf: dados.rep_cpf||dados.p1_cpf||'',
+          nac: 'BRASILEIRO(A)', cep: dados.rep_cep||dados.p1_cep||'',
+          rua: dados.rep_rua||dados.p1_rua||'', num: dados.rep_num||dados.p1_num||'',
+          comp: dados.rep_comp||dados.p1_comp||'', bairro: dados.rep_bairro||dados.p1_bairro||'',
+          cid: dados.rep_cid||dados.p1_cid||'', uf: dados.rep_uf||dados.p1_uf||'' },
+        fixedLabel: '👤 Representante Legal', fixedRole: true
+      }
+    ];
+  }
+
   // MENOR — estrutura fixa: representante + menor
   if (docAtual === 'MENOR') {
     return [
@@ -1100,7 +1126,7 @@ function buildFieldsGrid(ent) {
   ] : [
     { key: 'nome',   label: 'Nome Completo', full: true },
     { key: 'cpf',    label: 'CPF'                       },
-    { key: 'nac',    label: 'Nacionalidade'             },
+    { key: 'nac',    label: 'Nacionalidade', default: 'BRASILEIRO(A)' },
     { key: 'cep',    label: 'CEP'                       },
     { key: 'rua',    label: 'Logradouro',   full: true  },
     { key: 'num',    label: 'Número'                    },
@@ -1111,7 +1137,8 @@ function buildFieldsGrid(ent) {
   ];
 
   return `<div class="fields-grid">` + campos.map(c => {
-    const val = ent.campos[c.key] || '';
+    const val = ent.campos[c.key] || c.default || '';
+    if (val && c.default && !ent.campos[c.key]) ent.campos[c.key] = val;
     const missing = !val && !c.optional ? ' missing' : '';
     return `<div class="field-inline ${c.full ? 'field-full' : ''}">
       <label>${c.label}${!c.optional && !val ? ' ⚠' : ''}</label>
@@ -1242,6 +1269,22 @@ function gerarDocsFromReview() {
       if (el && !el.disabled) ent.campos[key] = el.value;
     });
   });
+
+  // SAQUE — fluxo próprio: empresa + representante + banking
+  if (docAtual === 'SAQUE') {
+    const pj  = entidadesExtraidas.find(e => e.id === 'pj');
+    const rep = entidadesExtraidas.find(e => e.id === 'rep');
+    if (pj)  { ['nome','cnpj','cep','rua','num','comp','bairro','cid','uf'].forEach(k => { const el = document.getElementById('pj_'+k); if (el) el.value = (pj.campos[k]||'').toUpperCase(); }); }
+    if (rep) { ['nome','cpf','cep','rua','num','comp','bairro','cid','uf'].forEach(k => { const el = document.getElementById('p1_'+k); if (el) el.value = (rep.campos[k]||'').toUpperCase(); }); }
+    const pendencias = [];
+    [pj, rep].filter(Boolean).forEach(ent => {
+      const faltando = verificarFaltando(ent);
+      if (faltando.length > 0) pendencias.push({ nome: ent.fixedLabel || ent.nome, campos: faltando });
+    });
+    if (pendencias.length > 0) mostrarPendencias(pendencias);
+    else gerarDocumentos();
+    return;
+  }
 
   // MENOR — fluxo próprio
   if (docAtual === 'MENOR') {
@@ -1642,16 +1685,67 @@ function gerarPDF(tipo) {
 
   // ---- SAQUE ----
   if (tipo === 'SAQUE') {
+    // Pega dados da empresa/rep dos cards se disponível
+    const pjEnt = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'pj') : null;
+    const repEnt = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'rep') : null;
+    const g = (ent, key, fallbackId) => {
+      if (ent && ent.campos[key]) return ent.campos[key].toString().toUpperCase();
+      return v(fallbackId);
+    };
+
+    const razao    = g(pjEnt,  'nome',   'pj_nome');
+    const cnpj     = g(pjEnt,  'cnpj',   'pj_cnpj');
+    const rua      = g(pjEnt,  'rua',    'pj_rua');
+    const num      = g(pjEnt,  'num',    'pj_num');
+    const compPJ   = g(pjEnt,  'comp',   'pj_comp');
+    const bairro   = g(pjEnt,  'bairro', 'pj_bairro');
+    const cidade   = g(pjEnt,  'cid',    'pj_cid');
+    const uf       = g(pjEnt,  'uf',     'pj_uf');
+    const cep      = g(pjEnt,  'cep',    'pj_cep');
+    const repNome  = g(repEnt, 'nome',   'p1_nome');
+    const repCpf   = g(repEnt, 'cpf',    'p1_cpf');
+
+    const compStr  = compPJ && compPJ !== '-' ? ' - ' + compPJ : '';
+    const valor1   = v('sq_valor1');
+    const extenso1 = v('sq_extenso1');
+    const valor2   = v('sq_valor2');
+    const extenso2 = v('sq_extenso2');
+    const v2str    = valor2 ? ` E ${valor2} (${extenso2})` : '';
+
     doc.setFontSize(14); doc.setFont('helvetica','bold');
     doc.text('TERMO DE AUTORIZAÇÃO E QUITAÇÃO', 105, y, {align:'center'}); y += 15;
+
     txt('AUTORIZANTE:', true, 'left');
-    txt(`Razão Social: ${v('pj_nome')}\nCNPJ: ${v('pj_cnpj')}\nEndereço: ${v('pj_rua')}, ${v('pj_num')}${comp('pj_comp')}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}\nRepresentante: ${v('p1_nome')}, CPF ${v('p1_cpf')}`, false, 'left'); y += 4;
-    const v2txt = v('sq_valor2') ? ` E ${v('sq_valor2')} (${v('sq_extenso2')})` : '';
-    txt(`O autorizante autoriza expressamente que a APPMAX realize o depósito para saque de ${v('sq_valor1')} (${v('sq_extenso1')})${v2txt} na seguinte conta:\nCPF: ${v('sq_cpf_conta')} | Tipo: ${v('sq_tipo_conta')} | Banco: ${v('sq_banco')} | Agência: ${v('sq_agencia')} | Conta: ${v('sq_conta')} | PIX: ${v('sq_pix')}`, false, 'left'); y += 4;
-    txt('Ao receber os valores, o AUTORIZANTE dá plena quitação à APPMAX, nada mais tendo a reclamar, judicial ou extrajudicialmente. Este termo tem caráter excepcional e não gera obrigação futura da APPMAX.'); y += 4;
-    txt(`${v('pj_cid')}/${v('pj_uf')}, ${dataExtenso()}.`, false, 'left'); y += 15;
-    assinatura('', v('p1_nome'));
-    doc.save(`TERMO_SAQUE_${(v('pj_nome')||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    txt(`Razão Social: ${razao}`, false, 'left');
+    txt(`CNPJ: ${cnpj}`, false, 'left');
+    txt(`Endereço: ${rua}, ${num}${compStr}, ${bairro} - ${cidade}/${uf} - CEP ${cep}`, false, 'left');
+    txt(`Representante legal: ${repNome}, portador do CPF n.º ${repCpf}`, false, 'left');
+    y += 5;
+
+    txt('Considerando que:', true, 'left');
+    txt('- O Autorizante era credenciado na Plataforma APPMAX de propriedade da APPMAX PLATAFORMA DE PAGAMENTOS LTDA., CNPJ nº 27.000.511/0001-60, com sede na Travessa São José, nº 455, sala 74, Navegantes, Porto Alegre–RS, CEP 90240-200, para a intermediação de transações de pagamento;');
+    txt('- O CNPJ do Autorizante encontra-se atualmente baixado perante a Receita Federal do Brasil, impossibilitando o recebimento de valores em sua conta bancária anteriormente vinculada;');
+    txt('- Por obrigação regulatória, a APPMAX deve realizar os repasses financeiros exclusivamente para o domicílio bancário do beneficiário final das transações realizadas;');
+    txt('- Em razão da inatividade da conta-corrente vinculada ao CNPJ, faz-se necessária uma alternativa segura para efetivar o pagamento dos valores devidos;');
+    y += 4;
+
+    txt(`O autorizante autoriza expressamente que a APPMAX realize o depósito para saque ${valor1} (${extenso1})${v2str} referente às transações realizadas pela empresa anteriormente à sua baixa, na seguinte conta de titularidade do seu representante legal:`);
+    y += 3;
+    txt(`- CPF do titular da conta indicada (sócio principal) CPF: ${v('sq_cpf_conta')}`, false, 'left');
+    txt(`- Tipo de conta (corrente ou poupança): ${v('sq_tipo_conta')}`, false, 'left');
+    txt(`- Banco: ${v('sq_banco')}`, false, 'left');
+    txt(`- Agência: ${v('sq_agencia')}`, false, 'left');
+    txt(`- Conta: ${v('sq_conta')}`, false, 'left');
+    txt(`- Chave PIX: ${v('sq_pix')}`, false, 'left');
+    y += 4;
+
+    txt('O AUTORIZANTE declara estar ciente dos Termos de Uso da APPMAX (https://appmax.com.br/termos-de-uso) e que o seu representante legal é o mesmo do período em que as transações ocorreram e que os valores ora pagos são devidos à referida pessoa jurídica.');
+    txt('Ao receber os valores acima especificados, o AUTORIZANTE dá plena, geral e irrevogável quitação à APPMAX, nada mais tendo a reclamar, judicial ou extrajudicialmente, a esse título.');
+    txt('O AUTORIZANTE isenta a APPMAX de qualquer responsabilidade por eventuais disputas societárias, fiscais, tributárias ou de qualquer natureza, relacionadas à destinação dos valores pagos neste termo.');
+    txt('Este termo tem caráter excepcional e não gera obrigação futura da APPMAX em realizar depósitos fora das regras do arranjo de pagamento vigente, nem constitui novação contratual. E por estarem de pleno acordo, firmam o presente termo no formato digital.');
+    y += 5;
+    txt(`${cidade}/${uf}, ${dataExtenso()}`, false, 'left');
+    doc.save(`TERMO_SAQUE_${(razao||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
     return;
   }
 
