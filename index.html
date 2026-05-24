@@ -931,6 +931,13 @@
 
         <div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#1e40af;letter-spacing:.4px;margin-bottom:6px;">Taxas de Parcelamento</div>
+          <select id="c_tabelaParc" onchange="calcAplicarTabela(this.value)"
+            style="width:100%;padding:9px 12px;border:1px solid #93c5fd;border-radius:7px;font-size:13px;font-family:inherit;background:#eff6ff;color:#1e40af;font-weight:600;margin-bottom:8px;">
+            <option value="">— Ou selecione tabela padrão —</option>
+            <option value="simples_249">Simples 2,49% ao mês</option>
+            <option value="simples_219">Simples 2,19% ao mês</option>
+            <option value="composta_299">Composta 2,99% ao mês (prestações fixas)</option>
+          </select>
           <label class="c-img-zone" id="c_imgZone2" for="c_imgInput2"
             ondragover="event.preventDefault();this.classList.add('drag-over')"
             ondragleave="this.classList.remove('drag-over')"
@@ -939,7 +946,7 @@
             <input type="file" id="c_imgInput2" accept="image/*" onchange="calcHandleFile(this.files[0],'parc')">
             <div style="font-size:22px;margin-bottom:6px;">💳</div>
             <div class="c-img-zone-text" id="c_imgZoneLabel2" style="font-size:13px;color:#1e40af;">Cola ou arraste aqui</div>
-            <div class="c-img-zone-sub" style="font-size:11px;color:#3b82f6;">Tabela de parcelamento personalizada (1x-12x)</div>
+            <div class="c-img-zone-sub" style="font-size:11px;color:#3b82f6;">Ou cole captura de tabela personalizada</div>
             <img id="c_imgPreview2" style="display:none;margin-top:8px;max-height:120px;border-radius:6px;max-width:100%;">
           </label>
         </div>
@@ -951,6 +958,21 @@
       </button>
 
       <div class="c-extract-status" id="c_extractStatus"></div>
+
+      <!-- PLANO PRÉ-CONFIGURADO -->
+      <div class="c-block" style="background:#f0fdf4;border-color:#86efac;">
+        <div class="c-title" style="color:#166534;">⚡ Plano de Taxas Padrão Appmax</div>
+        <div class="c-grid">
+          <div class="c-group" style="grid-column:1/-1;">
+            <label>Selecionar Plano</label>
+            <select id="c_planoPadrao" onchange="calcAplicarPlano(this.value)" style="border-color:#86efac;background:#f0fdf4;">
+              <option value="">— Selecione para pré-preencher —</option>
+              <option value="padrao30">Padrão — 4,99% (Recebimento 30 dias)</option>
+              <option value="padrao_ant">Padrão — 5,99% (Recebimento Antecipado)</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
       <div class="c-block">
         <div class="c-title">1. Dados Fundamentais da Venda</div>
@@ -2882,6 +2904,79 @@ function calcInit() {
   // Init masks
   if (g('c_vendaBruta')) g('c_vendaBruta').value = calcMaskMoney(g('c_vendaBruta').value);
   pctIds.forEach(id => { if(g(id)) g(id).value = calcMaskPct(g(id).value); });
+
+  calcUpdate();
+}
+
+
+// ============================================================
+// PLANOS PRÉ-CONFIGURADOS
+// ============================================================
+const CALC_PLANOS = {
+  padrao30: {
+    taxaProc: '499',   // 4,99%
+    taxaGate: '99',    // R$ 0,99
+    taxaGar:  '1500',  // 15,00%
+    taxaAnte: '149',   // 1,49%
+    prazoGarantia: 30,
+    statusSaque: 'cobrar',
+    taxaSaque: '367',  // R$ 3,67
+  },
+  padrao_ant: {
+    taxaProc: '599',   // 5,99%
+    taxaGate: '99',
+    taxaGar:  '1500',
+    taxaAnte: '149',
+    prazoGarantia: 1,
+    statusSaque: 'cobrar',
+    taxaSaque: '367',
+  }
+};
+
+const CALC_TABELAS = {
+  simples_249: { x1:'0',x2:'498',x3:'747',x4:'996',x5:'1245',x6:'1494',x7:'1743',x8:'1992',x9:'2241',x10:'2490',x11:'2739',x12:'2988' },
+  simples_219: { x1:'0',x2:'438',x3:'657',x4:'876',x5:'1095',x6:'1314',x7:'1533',x8:'1752',x9:'1971',x10:'2190',x11:'2409',x12:'2628' },
+  composta_299: { x1:'0',x2:'451',x3:'604',x4:'759',x5:'915',x6:'1072',x7:'1231',x8:'1392',x9:'1554',x10:'1717',x11:'1882',x12:'2048' }
+};
+
+function calcAplicarPlano(chave) {
+  if (!chave) return;
+  const p = CALC_PLANOS[chave];
+  if (!p) return;
+
+  const g = (id) => document.getElementById(id);
+  if (p.taxaProc)       { const el = g('c_taxaProc'); if(el) el.value = calcMaskPct(p.taxaProc); }
+  if (p.taxaGate)       { const el = g('c_taxaGate'); if(el) el.value = calcMaskMoney(p.taxaGate); }
+  if (p.taxaGar)        { const el = g('c_taxaGar');  if(el) el.value = calcMaskPct(p.taxaGar); }
+  if (p.taxaAnte)       { const el = g('c_taxaAnte'); if(el) el.value = calcMaskPct(p.taxaAnte); }
+  if (p.prazoGarantia)  { const el = g('c_prazoGarantia'); if(el) el.value = p.prazoGarantia; }
+  if (p.statusSaque)    { const el = g('c_statusSaque'); if(el) el.value = p.statusSaque; }
+  if (p.taxaSaque)      { const el = g('c_taxaSaque'); if(el) el.value = calcMaskMoney(p.taxaSaque); }
+
+  calcUpdate();
+}
+
+function calcAplicarTabela(chave) {
+  if (!chave) return;
+  const t = CALC_TABELAS[chave];
+  if (!t) return;
+
+  // Ativa modo custom
+  const modeloSel = document.getElementById('c_modeloCalculo');
+  if (modeloSel) modeloSel.value = 'custom';
+
+  for (let i = 1; i <= 12; i++) {
+    const val = t['x'+i];
+    const el = document.getElementById('cm'+i);
+    if (el && val !== undefined) el.value = calcMaskPct(val);
+  }
+
+  // Reset dropdown visual
+  const sel = document.getElementById('c_tabelaParc');
+  if (sel) {
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) opt.text = '✅ ' + opt.text.replace('✅ ','');
+  }
 
   calcUpdate();
 }
