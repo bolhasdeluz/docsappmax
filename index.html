@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gerador de Documentos · Appmax</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   
@@ -535,6 +536,11 @@
         <div class="doc-card-name">Revogação PJ</div>
         <div class="doc-card-desc">Revogar procuração PJ</div>
       </div>
+      <div class="doc-card" onclick="irTela('tela-calc')" style="border-color: #d97706; background: #fffbeb;">
+        <div class="doc-card-icon">🧮</div>
+        <div class="doc-card-name" style="color:#92400e;">Calculadora</div>
+        <div class="doc-card-desc">Simulação de taxas</div>
+      </div>
     </div>
   </div>
 
@@ -835,6 +841,197 @@
     </div>
   </div>
 
+  <!-- ===================== TELA CALCULADORA ===================== -->
+  <div id="tela-calc" class="screen">
+    <style>
+      .calc-wrap { font-family: 'DM Sans', sans-serif; }
+      .calc-wrap { --cp: #7c5cbf; --cp-light: #ede9f7; --cd: #1d1647; --tm: #655e8a; --bg: #f7f5fd; --bc: #e6e1f3; }
+      .calc-wrap .c-block { background:#faf9ff; border:1px solid var(--bc); border-radius:12px; padding:20px; margin-bottom:16px; }
+      .calc-wrap .c-title { font-size:11px; font-weight:700; color:var(--cp); text-transform:uppercase; letter-spacing:.5px; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:6px; }
+      .calc-wrap .c-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+      .calc-wrap .c-group { display:flex; flex-direction:column; gap:5px; }
+      .calc-wrap .c-group label { font-size:11px; font-weight:700; text-transform:uppercase; color:var(--tm); letter-spacing:.3px; }
+      .calc-wrap .c-group input, .calc-wrap .c-group select { padding:10px 12px; border:1px solid var(--bc); border-radius:7px; font-size:14px; color:var(--cd); font-weight:500; background:white; font-family:inherit; transition:border .15s; }
+      .calc-wrap .c-group input:focus, .calc-wrap .c-group select:focus { outline:none; border-color:var(--cp); box-shadow:0 0 0 3px rgba(124,92,191,.1); }
+      .calc-wrap .c-matrix { background:#fdfdff; border:1px dashed var(--cp); padding:18px; border-radius:12px; margin-bottom:16px; }
+      .calc-wrap .c-matrix-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; margin-top:10px; }
+      .calc-wrap .c-mx { display:flex; flex-direction:column; gap:4px; }
+      .calc-wrap .c-mx label { font-size:11px; font-weight:600; color:var(--tm); }
+      .calc-wrap .c-mx input { padding:8px; border:1px solid var(--bc); border-radius:6px; font-size:13px; text-align:center; font-family:inherit; }
+      .calc-wrap .c-btns { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+      .calc-wrap .c-btn { color:white; border:none; padding:14px; font-size:14px; font-weight:600; border-radius:8px; cursor:pointer; font-family:inherit; display:flex; justify-content:center; align-items:center; gap:8px; transition:opacity .15s; }
+      .calc-wrap .c-btn:hover { opacity:.88; }
+      .calc-wrap .c-btn-pdf { background:var(--cp); }
+      .calc-wrap .c-btn-chat { background:#10b981; }
+      .calc-wrap .c-preview { background:#fafafa; border:1px solid var(--bc); border-radius:12px; padding:18px; margin-bottom:20px; }
+      .calc-wrap .c-textarea { width:100%; height:230px; border:1px solid var(--bc); border-radius:8px; padding:14px; font-family:'DM Mono',monospace; font-size:12px; line-height:1.6; color:#1f2937; resize:vertical; background:white; box-sizing:border-box; }
+      .calc-wrap #c-pdf-report { border:1px solid var(--bc); border-radius:12px; overflow:hidden; background:white; }
+      .calc-wrap .c-report-header { background:var(--cp); color:white; padding:28px 24px; display:flex; justify-content:space-between; align-items:center; }
+      .calc-wrap .c-report-header h2 { margin:0; font-size:20px; font-weight:700; }
+      .calc-wrap .c-report-header p { margin:5px 0 0; font-size:13px; opacity:.85; }
+      .calc-wrap .c-rules { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; background:var(--cp-light); padding:12px 24px; font-size:12px; color:var(--cd); font-weight:600; }
+      .calc-wrap .c-table-sec { padding:24px; }
+      .calc-wrap table { width:100%; border-collapse:collapse; }
+      .calc-wrap th { text-align:left; padding:10px 14px; font-size:11px; text-transform:uppercase; color:var(--tm); border-bottom:2px solid var(--bc); }
+      .calc-wrap td { padding:12px 14px; border-bottom:1px solid #f6f4fc; font-size:13px; color:var(--cd); }
+      .calc-wrap .c-row-hl { background:#faf9ff; font-weight:600; }
+      .calc-wrap .c-row-total { background:var(--cd); }
+      .calc-wrap .c-row-total td { color:white; font-weight:700; font-size:15px; border:none; padding:16px 14px; }
+      .calc-wrap .text-right { text-align:right; }
+      .calc-wrap .c-footer { padding:0 24px 28px; font-size:11px; color:var(--tm); line-height:1.6; }
+    </style>
+
+    <div class="calc-wrap">
+      <div class="c-block">
+        <div class="c-title">1. Dados Fundamentais da Venda</div>
+        <div class="c-grid">
+          <div class="c-group">
+            <label>Tipo de Valor Informado</label>
+            <select id="c_tipoOrigemValor">
+              <option value="checkout_com_juros" selected>Valor Total do Pedido (com juros inclusos)</option>
+              <option value="produto_seco">Valor Base Seco (Sem os juros do parcelamento)</option>
+            </select>
+          </div>
+          <div class="c-group">
+            <label>Valor Digitado (R$)</label>
+            <input type="text" id="c_vendaBruta" value="1.557,50">
+          </div>
+          <div class="c-group">
+            <label>Nº de Parcelas do Pedido</label>
+            <select id="c_numParcelas">
+              <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option>
+              <option value="4">4x</option><option value="5">5x</option><option value="6">6x</option>
+              <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
+              <option value="10" selected>10x</option><option value="11">11x</option><option value="12">12x</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-block">
+        <div class="c-title">2. Estratégia de Parcelamento (Juros)</div>
+        <div class="c-grid">
+          <div class="c-group">
+            <label>Modelo de Cálculo</label>
+            <select id="c_modeloCalculo">
+              <option value="auto_mensal" selected>Automático: Multiplicar ao Mês</option>
+              <option value="auto_fixo">Automático: Taxa Fixa Única</option>
+              <option value="custom">Personalizado: Tabela Mês a Mês</option>
+            </select>
+          </div>
+          <div class="c-group" id="c_groupTaxaLinear">
+            <label>Taxa de Parcelamento Base (%)</label>
+            <input type="text" id="c_taxaParc" value="2,19 %">
+          </div>
+          <div class="c-group">
+            <label>Repassar Juros Pro Cliente?</label>
+            <select id="c_repassarJuros">
+              <option value="sim" selected>Sim (Cliente paga os juros no checkout)</option>
+              <option value="nao">Não (Absorver tudo na margem)</option>
+              <option value="parcial">Absorção Parcial (Até Parcela X)</option>
+            </select>
+          </div>
+          <div class="c-group" id="c_groupAbsorcao" style="display:none;">
+            <label>Absorver Juros Até Parcela X</label>
+            <input type="number" id="c_limiteAbsorcao" value="3" min="1" max="12">
+          </div>
+        </div>
+      </div>
+
+      <div class="c-block">
+        <div class="c-title">3. Custos Fixos do Gateway (Appmax)</div>
+        <div class="c-grid">
+          <div class="c-group"><label>Taxa Appmax Base (%)</label><input type="text" id="c_taxaProc" value="4,99 %"></div>
+          <div class="c-group"><label>Gateway Fixo (R$)</label><input type="text" id="c_taxaGate" value="0,99"></div>
+        </div>
+      </div>
+
+      <div class="c-block">
+        <div class="c-title">4. Retenção, Prazos e Saque</div>
+        <div class="c-grid">
+          <div class="c-group"><label>Garantia Base (%)</label><input type="text" id="c_taxaGar" value="15,00 %"></div>
+          <div class="c-group"><label>Liberação da Garantia (Dias)</label><input type="number" id="c_prazoGarantia" value="30" min="0"></div>
+          <div class="c-group"><label>Taxa de Antecipação (%)</label><input type="text" id="c_taxaAnte" value="1,49 %"></div>
+          <div class="c-group">
+            <label>Configuração de Saque</label>
+            <select id="c_statusSaque">
+              <option value="cobrar">Cobrar Taxa Fixa</option>
+              <option value="isento" selected>Não contém / Isento</option>
+            </select>
+          </div>
+          <div class="c-group" id="c_groupValorSaque" style="display:none;">
+            <label>Valor da Taxa de Saque (R$)</label>
+            <input type="text" id="c_taxaSaque" value="3,67">
+          </div>
+        </div>
+      </div>
+
+      <div class="c-matrix" id="c_matrixPanel" style="display:none;">
+        <div class="c-title">Tabela de Parcelamento Customizada (Taxa Final Acumulada por Mês)</div>
+        <div class="c-matrix-grid">
+          <div class="c-mx"><label>1x (%)</label><input id="cm1" value="0,00 %"></div>
+          <div class="c-mx"><label>2x (%)</label><input id="cm2" value="3,50 %"></div>
+          <div class="c-mx"><label>3x (%)</label><input id="cm3" value="5,20 %"></div>
+          <div class="c-mx"><label>4x (%)</label><input id="cm4" value="7,00 %"></div>
+          <div class="c-mx"><label>5x (%)</label><input id="cm5" value="8,90 %"></div>
+          <div class="c-mx"><label>6x (%)</label><input id="cm6" value="10,50 %"></div>
+          <div class="c-mx"><label>7x (%)</label><input id="cm7" value="12,20 %"></div>
+          <div class="c-mx"><label>8x (%)</label><input id="cm8" value="14,00 %"></div>
+          <div class="c-mx"><label>9x (%)</label><input id="cm9" value="15,80 %"></div>
+          <div class="c-mx"><label>10x (%)</label><input id="cm10" value="21,90 %"></div>
+          <div class="c-mx"><label>11x (%)</label><input id="cm11" value="19,20 %"></div>
+          <div class="c-mx"><label>12x (%)</label><input id="cm12" value="21,00 %"></div>
+        </div>
+      </div>
+
+      <div class="c-btns">
+        <button class="c-btn c-btn-pdf" onclick="calcGerarPDF()">📄 Baixar Relatório PDF</button>
+        <button class="c-btn c-btn-chat" onclick="calcCopiarChat()">📋 Copiar Texto para Chat</button>
+      </div>
+
+      <div class="c-preview">
+        <div class="section-label" style="margin-bottom:8px;">Texto para o Cliente (Editável)</div>
+        <textarea id="c_chatTextarea" class="c-textarea"></textarea>
+      </div>
+
+      <div id="c-pdf-report">
+        <div class="c-report-header">
+          <div><h2>Análise Estratégica de Margem</h2><p>Demonstrativo de auditoria alinhado com o extrato Appmax</p></div>
+          <div style="font-weight:800;font-size:18px;color:white;">app<span style="opacity:.7">max</span></div>
+        </div>
+        <div class="c-rules">
+          <span>Checkout: <b id="c_lCheckout">R$ 0,00</b></span>
+          <span>Parcelas: <b id="c_lParcelas">0</b>x</span>
+          <span>Garantia: <b id="c_lGarantiaTxt">R$ 0,00</b></span>
+          <span>Saque: <b id="c_lSaqueTxt">R$ 0,00</b></span>
+        </div>
+        <div class="c-table-sec">
+          <table>
+            <thead><tr>
+              <th>Fluxo de Entrada e Descontos</th>
+              <th class="text-right">30 Dias</th>
+              <th class="text-right">Antecipado</th>
+            </tr></thead>
+            <tbody>
+              <tr><td><b>Valor Total da Transação (Checkout)</b></td><td class="text-right" id="c_vBruto30">R$ 0,00</td><td class="text-right" id="c_vBrutoAnt">R$ 0,00</td></tr>
+              <tr><td>Taxa de Processamento Appmax Base</td><td class="text-right" id="c_vProc30">-</td><td class="text-right" id="c_vProcAnt">-</td></tr>
+              <tr><td>Taxa Fixa de Gateway / Antifraude</td><td class="text-right" id="c_vGate30">-</td><td class="text-right" id="c_vGateAnt">-</td></tr>
+              <tr><td>Retenção dos Juros de Parcelamento</td><td class="text-right" id="c_vParc30">-</td><td class="text-right" id="c_vParcAnt">-</td></tr>
+              <tr class="c-row-hl"><td><b>Total Líquido do Pedido na Tela</b></td><td class="text-right" id="c_vLiq30">R$ 0,00</td><td class="text-right" id="c_vLiqAnt">R$ 0,00</td></tr>
+              <tr><td>Retenção de Garantia (Não antecipável)</td><td class="text-right" id="c_vGar30">-</td><td class="text-right" id="c_vGarAnt">-</td></tr>
+              <tr><td>Desconto de Antecipação Comercial</td><td class="text-right" id="c_vAnte30">R$ 0,00</td><td class="text-right" id="c_vAnteAnt">-</td></tr>
+              <tr><td>Tarifa de Saque / Transferência</td><td class="text-right" id="c_vSaque30">-</td><td class="text-right" id="c_vSaqueAnt">-</td></tr>
+              <tr class="c-row-total"><td>VALOR REAL TOTAL A RECEBER NA CONTA</td><td class="text-right" id="c_vFinal30">R$ 0,00</td><td class="text-right" id="c_vFinalAnt">R$ 0,00</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="c-footer">
+          <b>Nota de Auditoria:</b> O valor "Não Antecipável" corresponde à taxa de garantia retida temporariamente. Custo da antecipação imediata: <b id="c_vDif" style="color:var(--cp);">R$ 0,00</b>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /page -->
 
 <!-- FORMAT MODAL -->
@@ -871,6 +1068,9 @@ function irTela(id) {
   telaAtual = id;
   document.getElementById('btn-voltar').classList.toggle('visible', telaHistorico.length > 0);
   // Show/hide review extras
+  if (id === 'tela-calc') {
+    setTimeout(calcInit, 50);
+  }
   if (id === 'tela-review') {
     const swapBtn = document.getElementById('swap-menor-btn');
     const bankingDiv = document.getElementById('saque-banking-review');
@@ -2388,6 +2588,167 @@ function gerarPDF(tipo) {
   const nome = isPF ? v('p1_nome') : v('pj_nome');
   const prefixo = isProc ? 'PROCURACAO' : 'TERMO';
   doc.save(`${prefixo}_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.pdf`);
+}
+</script>
+
+<script>
+// ============================================================
+// CALCULADORA DE TAXAS — funções com prefixo calc_ para evitar conflitos
+// ============================================================
+function calcFmt(v) { return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function calcParseBr(val) {
+  if (!val) return 0;
+  return parseFloat(val.toString().replace(/%/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.')) || 0;
+}
+function calcMaskMoney(v) {
+  let n = v.replace(/\D/g,'');
+  n = (n/100).toFixed(2)+'';
+  n = n.replace('.',',').replace(/(\d)(?=(\d{3})+(?!\d))/g,'$1.');
+  return n;
+}
+function calcMaskPct(v) {
+  let n = v.replace(/\D/g,'');
+  n = (n/100).toFixed(2)+'';
+  return n.replace('.',',') + ' %';
+}
+
+function calcUpdate() {
+  const g = (id) => document.getElementById(id);
+  const val = {};
+  ['c_tipoOrigemValor','c_modeloCalculo','c_repassarJuros','c_statusSaque'].forEach(f => {
+    if (g(f)) val[f.replace('c_','')] = g(f).value;
+  });
+  val.vendaBruta     = calcParseBr(g('c_vendaBruta')?.value);
+  val.numParcelas    = parseInt(g('c_numParcelas')?.value) || 1;
+  val.taxaParc       = calcParseBr(g('c_taxaParc')?.value);
+  val.limiteAbsorcao = parseInt(g('c_limiteAbsorcao')?.value) || 0;
+  val.taxaProc       = calcParseBr(g('c_taxaProc')?.value);
+  val.taxaGate       = calcParseBr(g('c_taxaGate')?.value);
+  val.taxaGar        = calcParseBr(g('c_taxaGar')?.value);
+  val.prazoGarantia  = parseInt(g('c_prazoGarantia')?.value) || 0;
+  val.taxaAnte       = calcParseBr(g('c_taxaAnte')?.value);
+  val.taxaSaque      = calcParseBr(g('c_taxaSaque')?.value);
+
+  if (!g('c_matrixPanel')) return;
+  g('c_matrixPanel').style.display     = val.modeloCalculo === 'custom' ? 'block' : 'none';
+  g('c_groupTaxaLinear').style.display = val.modeloCalculo === 'custom' ? 'none' : 'flex';
+  g('c_groupAbsorcao').style.display   = val.repassarJuros === 'parcial' ? 'flex' : 'none';
+  g('c_groupValorSaque').style.display = val.statusSaque === 'cobrar' ? 'flex' : 'none';
+
+  const saqueFinal = val.statusSaque === 'isento' ? 0 : val.taxaSaque;
+  let juros = 0;
+  if (val.modeloCalculo === 'custom') {
+    juros = calcParseBr(g('cm'+val.numParcelas)?.value);
+  } else if (val.modeloCalculo === 'auto_mensal') {
+    juros = val.numParcelas > 1 ? val.taxaParc * val.numParcelas : 0;
+  } else {
+    juros = val.numParcelas > 1 ? val.taxaParc : 0;
+  }
+
+  let checkout = 0, base = 0, dParc = 0;
+  if (val.tipoOrigemValor === 'checkout_com_juros') {
+    checkout = val.vendaBruta;
+    if (val.repassarJuros === 'sim') { base = checkout / (1 + juros/100); dParc = checkout - base; }
+    else { base = checkout; dParc = checkout * (juros/100); }
+  } else {
+    base = val.vendaBruta;
+    if (val.repassarJuros === 'sim') { dParc = base*(juros/100); checkout = base + dParc; }
+    else { dParc = base*(juros/100); checkout = base; }
+  }
+
+  const dProc = checkout * (val.taxaProc/100);
+  const liq   = checkout - dProc - val.taxaGate - dParc;
+  const dGar  = checkout * (val.taxaGar/100);
+  const saldo = liq - dGar;
+  const dAnte = saldo * (val.taxaAnte/100);
+  const res30 = saldo - saqueFinal;
+  const resAnt = saldo - dAnte - saqueFinal;
+
+  const s = (id, txt) => { if(g(id)) g(id).innerText = txt; };
+  s('c_lCheckout', calcFmt(checkout));
+  s('c_lParcelas', val.numParcelas);
+  s('c_lGarantiaTxt', calcFmt(dGar)+' ('+val.prazoGarantia+'d)');
+  s('c_lSaqueTxt', saqueFinal === 0 ? 'Isento' : calcFmt(saqueFinal));
+  s('c_vBruto30', calcFmt(checkout)); s('c_vBrutoAnt', calcFmt(checkout));
+  s('c_vProc30', '- '+calcFmt(dProc)); s('c_vProcAnt', '- '+calcFmt(dProc));
+  s('c_vGate30', '- '+calcFmt(val.taxaGate)); s('c_vGateAnt', '- '+calcFmt(val.taxaGate));
+  s('c_vParc30', '- '+calcFmt(dParc)); s('c_vParcAnt', '- '+calcFmt(dParc));
+  s('c_vLiq30', calcFmt(liq)); s('c_vLiqAnt', calcFmt(liq));
+  s('c_vGar30', '- '+calcFmt(dGar)); s('c_vGarAnt', '- '+calcFmt(dGar));
+  s('c_vAnte30', calcFmt(0)); s('c_vAnteAnt', '- '+calcFmt(dAnte));
+  s('c_vSaque30', '- '+calcFmt(saqueFinal)); s('c_vSaqueAnt', '- '+calcFmt(saqueFinal));
+  s('c_vFinal30', calcFmt(res30)); s('c_vFinalAnt', calcFmt(resAnt));
+  s('c_vDif', calcFmt(res30 - resAnt));
+
+  if (g('c_chatTextarea')) {
+    g('c_chatTextarea').value =
+`Olá! Fiz o fechamento dos cálculos com base nos termos comerciais do seu plano:
+
+• Total Líquido na Tela: ${calcFmt(liq)}
+• Garantia retida (${val.taxaGar}%): - ${calcFmt(dGar)} (liberado em ${val.prazoGarantia} dias)
+• Saldo pós-garantia: ${calcFmt(saldo)}
+
+Opções de recebimento:
+
+1) ⏱️ Prazo normal (30 dias): ${calcFmt(res30)}
+2) ⚡ Antecipado agora: ${calcFmt(resAnt)}
+
+*A diferença para receber na hora fica em apenas ${calcFmt(res30 - resAnt)}.*`;
+  }
+}
+
+function calcGerarPDF() {
+  const el = document.getElementById('c-pdf-report');
+  if (!el) return;
+  const opt = { margin:10, filename:'relatorio-appmax.pdf', image:{type:'jpeg',quality:.98}, html2canvas:{scale:2}, jsPDF:{unit:'mm',format:'a4',orientation:'landscape'} };
+  html2pdf().set(opt).from(el).save();
+}
+
+function calcCopiarChat() {
+  const txt = document.getElementById('c_chatTextarea')?.value || '';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(() => alert('Copiado!'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert('Copiado!');
+  }
+}
+
+// Attach events when calc screen is visible
+function calcInit() {
+  const g = (id) => document.getElementById(id);
+  if (!g('c_vendaBruta') || g('c_vendaBruta').dataset.calcInited) return;
+  g('c_vendaBruta').dataset.calcInited = '1';
+
+  const pctIds = ['c_taxaParc','c_taxaProc','c_taxaGar','c_taxaAnte','c_taxaSaque'];
+  const moneyIds = ['c_vendaBruta','c_taxaGate'];
+
+  moneyIds.forEach(id => {
+    const el = g(id);
+    if (el) { el.addEventListener('input', function(){ this.value = calcMaskMoney(this.value); calcUpdate(); }); }
+  });
+  pctIds.forEach(id => {
+    const el = g(id);
+    if (el) { el.addEventListener('input', function(){ this.value = calcMaskPct(this.value); calcUpdate(); }); }
+  });
+  for(let i=1;i<=12;i++) {
+    const el = g('cm'+i);
+    if (el) el.addEventListener('input', function(){ this.value = calcMaskPct(this.value); calcUpdate(); });
+  }
+  ['c_tipoOrigemValor','c_numParcelas','c_modeloCalculo','c_repassarJuros','c_statusSaque'].forEach(id => {
+    const el = g(id);
+    if (el) el.addEventListener('change', calcUpdate);
+  });
+  g('c_limiteAbsorcao')?.addEventListener('input', calcUpdate);
+  g('c_prazoGarantia')?.addEventListener('input', calcUpdate);
+
+  // Init masks
+  if (g('c_vendaBruta')) g('c_vendaBruta').value = calcMaskMoney(g('c_vendaBruta').value);
+  pctIds.forEach(id => { if(g(id)) g(id).value = calcMaskPct(g(id).value); });
+
+  calcUpdate();
 }
 </script>
 </body>
