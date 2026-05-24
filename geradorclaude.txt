@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Documentos · Appmax</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --purple: #5c3d99;
+      --purple-light: #7c5cbf;
+      --purple-dim: #ede9f7;
+      --green: #1e6b45;
+      --green-light: #e6f4ed;
+      --red: #b91c1c;
+      --bg: #f5f4f8;
+      --surface: #ffffff;
+      --border: #e2dff0;
+      --text: #1a1625;
+      --muted: #7a7490;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* TOPBAR */
+    .topbar {
+      background: var(--purple);
+      color: white;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(92,61,153,0.25);
+    }
+    .topbar-logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+    .topbar-sep { opacity: 0.3; margin: 0 4px; }
+    .topbar-sub { font-size: 13px; opacity: 0.7; font-weight: 400; }
+    .topbar-back {
+      margin-left: auto;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .topbar-back:hover { background: rgba(255,255,255,0.25); }
+    .topbar-back.visible { display: flex; }
+
+    /* LAYOUT */
+    .page { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* CARD BASE */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    /* TELA 1 — SELEÇÃO */
+    .screen-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--purple);
+      margin-bottom: 6px;
+    }
+    .screen-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    .doc-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 18px;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .doc-card:hover {
+      border-color: var(--purple);
+      background: var(--purple-dim);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(92,61,153,0.12);
+    }
+    .doc-card-icon { font-size: 26px; }
+    .doc-card-name { font-size: 14px; font-weight: 600; color: var(--text); }
+    .doc-card-desc { font-size: 12px; color: var(--muted); }
+
+    /* TELA 2 — EXTRAÇÃO */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .upload-drop {
+      border: 2px dashed var(--purple-light);
+      border-radius: var(--radius);
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--purple-dim);
+      transition: all 0.15s;
+      margin-bottom: 16px;
+    }
+    .upload-drop:hover { background: #e3dcf5; border-color: var(--purple); }
+    .upload-drop input { display: none; }
+    .upload-drop-icon { font-size: 28px; margin-bottom: 8px; }
+    .upload-drop-text { font-size: 14px; font-weight: 500; color: var(--purple); }
+    .upload-drop-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .upload-success { color: var(--green); font-weight: 600; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      margin: 16px 0;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    textarea.paste-area {
+      width: 100%;
+      min-height: 120px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      resize: vertical;
+      color: var(--text);
+      background: #fafaf9;
+      transition: border 0.15s;
+    }
+    textarea.paste-area:focus {
+      outline: none;
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(92,61,153,0.1);
+    }
+    textarea.paste-area::placeholder { color: #b0aac4; }
+
+    /* BOTÕES */
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+    .btn {
+      padding: 11px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .btn-ai { background: var(--purple); color: white; flex: 1; justify-content: center; }
+    .btn-ai:hover { background: var(--purple-light); }
+    .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-manual { background: var(--surface); border: 2px solid var(--purple); color: var(--purple); flex: 1; justify-content: center; }
+    .btn-manual:hover { background: var(--purple-dim); }
+    .btn-generate { background: var(--green); color: white; flex: 1; justify-content: center; }
+    .btn-generate:hover { background: #165c38; }
+    .btn-back { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-back:hover { border-color: var(--purple); color: var(--purple); }
+
+    /* TELA 3 — FORMULÁRIO */
+    .form-section {
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .form-section-header {
+      padding: 12px 18px;
+      background: #f8f7fc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--purple);
+    }
+    .form-section-body {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    .form-section-body.hidden { display: none; }
+    .full { grid-column: 1 / -1; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+    .field input, .field select {
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      text-transform: uppercase;
+      color: var(--text);
+      background: #fafaf9;
+      transition: border 0.15s;
+    }
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(92,61,153,0.09);
+      background: white;
+    }
+    .field input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .toggle-label input[type="checkbox"] { accent-color: var(--purple); width: 15px; height: 15px; }
+
+    /* STATUS */
+    .status-bar {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 14px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-bar.visible { display: flex; }
+    .status-bar.info { background: var(--purple-dim); color: var(--purple); }
+    .status-bar.error { background: #fee2e2; color: var(--red); }
+    .status-bar.success { background: var(--green-light); color: var(--green); }
+
+    /* LOADING OVERLAY */
+    #loading-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(26,22,37,0.55);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 9999;
+      display: none;
+    }
+    #loading-overlay.visible { display: flex; }
+    .loading-box {
+      background: white;
+      border-radius: 14px;
+      padding: 32px 40px;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+    }
+    .loading-spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--purple-dim);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-weight: 600; color: var(--purple); font-size: 15px; }
+    .loading-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* HIDDEN */
+    .hidden { display: none !important; }
+    .group-hidden { display: none !important; }
+
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      .page { padding: 16px 12px 50px; }
+      .doc-grid { grid-template-columns: 1fr 1fr; }
+      .btn-row { flex-direction: column; }
+      .form-section-body { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <span class="topbar-logo">Appmax</span>
+  <span class="topbar-sep">|</span>
+  <span class="topbar-sub">Gerador de Documentos</span>
+  <button class="topbar-back" id="btn-voltar" onclick="voltarTela()">← Voltar</button>
+</div>
+
+<!-- LOADING -->
+<div id="loading-overlay">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Extraindo dados com IA...</div>
+    <div class="loading-sub">Isso pode levar alguns segundos</div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- ===================== TELA 1: SELEÇÃO ===================== -->
+  <div id="tela-1" class="screen active">
+    <div class="screen-title">Selecione o documento</div>
+    <div class="screen-sub">Escolha o tipo de documento que deseja gerar</div>
+    <div class="doc-grid">
+      <div class="doc-card" onclick="selecionarDoc('PJ')">
+        <div class="doc-card-icon">🏢</div>
+        <div class="doc-card-name">Lote PJ</div>
+        <div class="doc-card-desc">Procuração + Termo PJ</div>
+      </div>
+      <div class="doc-card" onclick="selecionarDoc('PF')">
+        <div class="doc-card-icon">👤</div>
+        <div class="doc-card-name">Lote PF</div>
+        <div class="doc-card-desc">Procuração + Termo PF</div>
+      </div>
+      <div class="doc-card" onclick="selecionarDoc('MENOR')">
+        <div class="doc-card-icon">👦</div>
+        <div class="doc-card-name">Termo Menor</div>
+        <div class="doc-card-desc">Autorização de menor</div>
+      </div>
+      <div class="doc-card" onclick="selecionarDoc('SAQUE')">
+        <div class="doc-card-icon">💰</div>
+        <div class="doc-card-name">Termo Saque</div>
+        <div class="doc-card-desc">Autorização e quitação</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TELA 2: EXTRAÇÃO ===================== -->
+  <div id="tela-2" class="screen">
+    <div class="screen-title" id="t2-titulo">Extrair dados</div>
+    <div class="screen-sub">Faça upload do PDF ou cole o texto para a IA identificar os dados automaticamente</div>
+
+    <div class="card">
+      <div class="section-label">Upload de PDF</div>
+      <label class="upload-drop" for="file-pdf">
+        <input type="file" id="file-pdf" accept="application/pdf" onchange="onPdfSelecionado(this)">
+        <div class="upload-drop-icon">📄</div>
+        <div class="upload-drop-text" id="upload-label">Clique para selecionar o PDF</div>
+        <div class="upload-drop-sub">Cartão CNPJ, contrato, ficha cadastral...</div>
+      </label>
+
+      <div class="divider">ou cole o texto abaixo</div>
+
+      <div class="section-label">Texto livre</div>
+      <textarea id="texto-manual" class="paste-area" placeholder="Cole aqui os dados de um e-mail, conversa ou qualquer texto com as informações..."></textarea>
+
+      <div class="status-bar" id="status-bar"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-ai" id="btn-extrair" onclick="extrairComIA()">🤖 Extrair com IA</button>
+        <button class="btn btn-manual" onclick="irParaFormulario()">✏️ Preencher Manualmente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TELA 3: FORMULÁRIO ===================== -->
+  <div id="tela-3" class="screen">
+    <div class="screen-title">Revisar e gerar</div>
+    <div class="screen-sub">Verifique os dados antes de gerar os documentos</div>
+
+    <!-- EMPRESA (PJ) -->
+    <div class="form-section group-pj">
+      <div class="form-section-header">🏢 Empresa (Pessoa Jurídica)</div>
+      <div class="form-section-body">
+        <div class="field full"><label>Razão Social</label><input id="pj_nome" type="text"></div>
+        <div class="field"><label>CNPJ</label><input id="pj_cnpj" type="text" oninput="maskCNPJ(this)" maxlength="18"></div>
+        <div class="field"><label>CEP</label><input id="pj_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field full"><label>Logradouro</label><input id="pj_rua" type="text"></div>
+        <div class="field"><label>Número</label><input id="pj_num" type="text"></div>
+        <div class="field"><label>Complemento</label><input id="pj_comp" type="text"></div>
+        <div class="field"><label>Bairro</label><input id="pj_bairro" type="text"></div>
+        <div class="field"><label>Cidade</label><input id="pj_cid" type="text"></div>
+        <div class="field"><label>UF</label><input id="pj_uf" type="text" maxlength="2"></div>
+      </div>
+    </div>
+
+    <!-- OUTORGANTE 1 -->
+    <div class="form-section group-p1">
+      <div class="form-section-header" id="lbl-p1">👤 Outorgante / Parceiro 1</div>
+      <div class="form-section-body">
+        <div class="field full"><label>Nome Completo</label><input id="p1_nome" type="text"></div>
+        <div class="field"><label>CPF</label><input id="p1_cpf" type="text" oninput="maskCPF(this)" maxlength="14"></div>
+        <div class="field"><label>Nacionalidade</label><input id="p1_nac" type="text" value="BRASILEIRO(A)"></div>
+        <div class="field"><label>CEP</label><input id="p1_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field full"><label>Logradouro</label><input id="p1_rua" type="text"></div>
+        <div class="field"><label>Número</label><input id="p1_num" type="text"></div>
+        <div class="field"><label>Complemento</label><input id="p1_comp" type="text"></div>
+        <div class="field"><label>Bairro</label><input id="p1_bairro" type="text"></div>
+        <div class="field"><label>Cidade</label><input id="p1_cid" type="text"></div>
+        <div class="field"><label>UF</label><input id="p1_uf" type="text" maxlength="2"></div>
+      </div>
+    </div>
+
+    <!-- OUTORGANTE 2 (opcional) -->
+    <div class="form-section group-p-extra">
+      <div class="form-section-header">
+        👤 Outorgante / Parceiro 2
+        <label class="toggle-label"><input type="checkbox" id="toggle_p2" onchange="toggleSecao('p2', this.checked)"> Incluir</label>
+      </div>
+      <div class="form-section-body hidden" id="section_p2">
+        <div class="field full"><label>Nome Completo</label><input id="p2_nome" type="text" disabled></div>
+        <div class="field"><label>CPF</label><input id="p2_cpf" type="text" oninput="maskCPF(this)" maxlength="14" disabled></div>
+        <div class="field"><label>Nacionalidade</label><input id="p2_nac" type="text" value="BRASILEIRO(A)" disabled></div>
+        <div class="field"><label>CEP</label><input id="p2_cep" type="text" oninput="maskCEP(this)" maxlength="9" disabled></div>
+        <div class="field full"><label>Logradouro</label><input id="p2_rua" type="text" disabled></div>
+        <div class="field"><label>Número</label><input id="p2_num" type="text" disabled></div>
+        <div class="field"><label>Complemento</label><input id="p2_comp" type="text" disabled></div>
+        <div class="field"><label>Bairro</label><input id="p2_bairro" type="text" disabled></div>
+        <div class="field"><label>Cidade</label><input id="p2_cid" type="text" disabled></div>
+        <div class="field"><label>UF</label><input id="p2_uf" type="text" maxlength="2" disabled></div>
+      </div>
+    </div>
+
+    <!-- OUTORGANTE 3 (opcional) -->
+    <div class="form-section group-p-extra">
+      <div class="form-section-header">
+        👤 Outorgante / Parceiro 3
+        <label class="toggle-label"><input type="checkbox" id="toggle_p3" onchange="toggleSecao('p3', this.checked)"> Incluir</label>
+      </div>
+      <div class="form-section-body hidden" id="section_p3">
+        <div class="field full"><label>Nome Completo</label><input id="p3_nome" type="text" disabled></div>
+        <div class="field"><label>CPF</label><input id="p3_cpf" type="text" oninput="maskCPF(this)" maxlength="14" disabled></div>
+        <div class="field"><label>Nacionalidade</label><input id="p3_nac" type="text" value="BRASILEIRO(A)" disabled></div>
+        <div class="field"><label>CEP</label><input id="p3_cep" type="text" oninput="maskCEP(this)" maxlength="9" disabled></div>
+        <div class="field full"><label>Logradouro</label><input id="p3_rua" type="text" disabled></div>
+        <div class="field"><label>Número</label><input id="p3_num" type="text" disabled></div>
+        <div class="field"><label>Complemento</label><input id="p3_comp" type="text" disabled></div>
+        <div class="field"><label>Bairro</label><input id="p3_bairro" type="text" disabled></div>
+        <div class="field"><label>Cidade</label><input id="p3_cid" type="text" disabled></div>
+        <div class="field"><label>UF</label><input id="p3_uf" type="text" maxlength="2" disabled></div>
+      </div>
+    </div>
+
+    <!-- OUTORGADO 1 -->
+    <div class="form-section group-s">
+      <div class="form-section-header" id="lbl-s1">👔 Outorgado / Terceiro Operador 1</div>
+      <div class="form-section-body">
+        <div class="field full"><label>Nome Completo</label><input id="s1_nome" type="text"></div>
+        <div class="field"><label>CPF</label><input id="s1_cpf" type="text" oninput="maskCPF(this)" maxlength="14"></div>
+        <div class="field"><label>Nacionalidade</label><input id="s1_nac" type="text" value="BRASILEIRO(A)"></div>
+        <div class="field"><label>CEP</label><input id="s1_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field full"><label>Logradouro</label><input id="s1_rua" type="text"></div>
+        <div class="field"><label>Número</label><input id="s1_num" type="text"></div>
+        <div class="field"><label>Complemento</label><input id="s1_comp" type="text"></div>
+        <div class="field"><label>Bairro</label><input id="s1_bairro" type="text"></div>
+        <div class="field"><label>Cidade</label><input id="s1_cid" type="text"></div>
+        <div class="field"><label>UF</label><input id="s1_uf" type="text" maxlength="2"></div>
+      </div>
+    </div>
+
+    <!-- OUTORGADO 2 (opcional) -->
+    <div class="form-section group-s">
+      <div class="form-section-header">
+        👔 Outorgado / Terceiro Operador 2
+        <label class="toggle-label"><input type="checkbox" id="toggle_s2" onchange="toggleSecao('s2', this.checked)"> Incluir</label>
+      </div>
+      <div class="form-section-body hidden" id="section_s2">
+        <div class="field full"><label>Nome Completo</label><input id="s2_nome" type="text" disabled></div>
+        <div class="field"><label>CPF</label><input id="s2_cpf" type="text" oninput="maskCPF(this)" maxlength="14" disabled></div>
+        <div class="field"><label>Nacionalidade</label><input id="s2_nac" type="text" value="BRASILEIRO(A)" disabled></div>
+        <div class="field"><label>CEP</label><input id="s2_cep" type="text" oninput="maskCEP(this)" maxlength="9" disabled></div>
+        <div class="field full"><label>Logradouro</label><input id="s2_rua" type="text" disabled></div>
+        <div class="field"><label>Número</label><input id="s2_num" type="text" disabled></div>
+        <div class="field"><label>Complemento</label><input id="s2_comp" type="text" disabled></div>
+        <div class="field"><label>Bairro</label><input id="s2_bairro" type="text" disabled></div>
+        <div class="field"><label>Cidade</label><input id="s2_cid" type="text" disabled></div>
+        <div class="field"><label>UF</label><input id="s2_uf" type="text" maxlength="2" disabled></div>
+      </div>
+    </div>
+
+    <!-- OUTORGADO 3 (opcional) -->
+    <div class="form-section group-s">
+      <div class="form-section-header">
+        👔 Outorgado / Terceiro Operador 3
+        <label class="toggle-label"><input type="checkbox" id="toggle_s3" onchange="toggleSecao('s3', this.checked)"> Incluir</label>
+      </div>
+      <div class="form-section-body hidden" id="section_s3">
+        <div class="field full"><label>Nome Completo</label><input id="s3_nome" type="text" disabled></div>
+        <div class="field"><label>CPF</label><input id="s3_cpf" type="text" oninput="maskCPF(this)" maxlength="14" disabled></div>
+        <div class="field"><label>Nacionalidade</label><input id="s3_nac" type="text" value="BRASILEIRO(A)" disabled></div>
+        <div class="field"><label>CEP</label><input id="s3_cep" type="text" oninput="maskCEP(this)" maxlength="9" disabled></div>
+        <div class="field full"><label>Logradouro</label><input id="s3_rua" type="text" disabled></div>
+        <div class="field"><label>Número</label><input id="s3_num" type="text" disabled></div>
+        <div class="field"><label>Complemento</label><input id="s3_comp" type="text" disabled></div>
+        <div class="field"><label>Bairro</label><input id="s3_bairro" type="text" disabled></div>
+        <div class="field"><label>Cidade</label><input id="s3_cid" type="text" disabled></div>
+        <div class="field"><label>UF</label><input id="s3_uf" type="text" maxlength="2" disabled></div>
+      </div>
+    </div>
+
+    <!-- GRUPO MENOR -->
+    <div class="form-section group-menor">
+      <div class="form-section-header">👨‍👧 Representante Legal</div>
+      <div class="form-section-body">
+        <div class="field full"><label>Nome Completo</label><input id="r_nome" type="text"></div>
+        <div class="field"><label>CPF</label><input id="r_cpf" type="text" oninput="maskCPF(this)" maxlength="14"></div>
+        <div class="field"><label>CEP</label><input id="r_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field full"><label>Logradouro</label><input id="r_rua" type="text"></div>
+        <div class="field"><label>Número</label><input id="r_num" type="text"></div>
+        <div class="field"><label>Complemento</label><input id="r_comp" type="text"></div>
+        <div class="field"><label>Bairro</label><input id="r_bairro" type="text"></div>
+        <div class="field"><label>Cidade</label><input id="r_cid" type="text"></div>
+        <div class="field"><label>UF</label><input id="r_uf" type="text" maxlength="2"></div>
+      </div>
+    </div>
+    <div class="form-section group-menor">
+      <div class="form-section-header">
+        👦 Menor Autorizado
+        <label class="toggle-label"><input type="checkbox" id="toggle_end_menor" onchange="copiarEnderecoRep()"> Mesmo endereço do representante</label>
+      </div>
+      <div class="form-section-body">
+        <div class="field full"><label>Nome Completo</label><input id="m_nome" type="text"></div>
+        <div class="field"><label>CPF</label><input id="m_cpf" type="text" oninput="maskCPF(this)" maxlength="14"></div>
+        <div class="field"><label>CEP</label><input id="m_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field full"><label>Logradouro</label><input id="m_rua" type="text"></div>
+        <div class="field"><label>Número</label><input id="m_num" type="text"></div>
+        <div class="field"><label>Complemento</label><input id="m_comp" type="text"></div>
+        <div class="field"><label>Bairro</label><input id="m_bairro" type="text"></div>
+        <div class="field"><label>Cidade</label><input id="m_cid" type="text"></div>
+        <div class="field"><label>UF</label><input id="m_uf" type="text" maxlength="2"></div>
+      </div>
+    </div>
+
+    <!-- GRUPO SAQUE -->
+    <div class="form-section group-saque">
+      <div class="form-section-header">💲 Valores e Dados Bancários</div>
+      <div class="form-section-body">
+        <div class="field"><label>Valor Principal (R$)</label><input id="sq_valor1" type="text" oninput="maskMoeda(this)" placeholder="R$ 0,00"></div>
+        <div class="field"><label>Por Extenso</label><input id="sq_extenso1" type="text" readonly></div>
+        <div class="field"><label>Valor Adicional (R$)</label><input id="sq_valor2" type="text" oninput="maskMoeda(this)" placeholder="Opcional"></div>
+        <div class="field"><label>Por Extenso</label><input id="sq_extenso2" type="text" readonly></div>
+        <div class="field"><label>CPF Titular da Conta</label><input id="sq_cpf_conta" type="text" oninput="maskCPF(this)" maxlength="14"></div>
+        <div class="field"><label>Tipo de Conta</label><select id="sq_tipo_conta"><option>CORRENTE</option><option>POUPANÇA</option></select></div>
+        <div class="field"><label>Banco</label><input id="sq_banco" type="text"></div>
+        <div class="field"><label>Agência</label><input id="sq_agencia" type="text"></div>
+        <div class="field"><label>Conta</label><input id="sq_conta" type="text"></div>
+        <div class="field"><label>Chave PIX</label><input id="sq_pix" type="text"></div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top: 20px;">
+      <button class="btn btn-generate" onclick="gerarDocumentos()">📥 Gerar PDFs</button>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO DA API
+// Para usar no GitHub Pages, coloque sua chave Claude aqui:
+// ============================================================
+const ANTHROPIC_API_KEY = ''; // Ex: 'sk-ant-...'
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+let docAtual = '';
+let telaAtual = 1;
+
+// ============================================================
+// NAVEGAÇÃO
+// ============================================================
+function irTela(num) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('tela-' + num).classList.add('active');
+  telaAtual = num;
+  document.getElementById('btn-voltar').classList.toggle('visible', num > 1);
+  window.scrollTo(0, 0);
+}
+
+function voltarTela() {
+  if (telaAtual > 1) irTela(telaAtual - 1);
+}
+
+function selecionarDoc(tipo) {
+  docAtual = tipo;
+  const labels = { PJ: 'Lote PJ — Procuração + Termo', PF: 'Lote PF — Procuração + Termo', MENOR: 'Termo de Menor', SAQUE: 'Termo de Saque' };
+  document.getElementById('t2-titulo').textContent = labels[tipo] || tipo;
+  configurarGrupos(tipo);
+  irTela(2);
+}
+
+function configurarGrupos(tipo) {
+  const isPJ = tipo === 'PJ', isPF = tipo === 'PF', isMenor = tipo === 'MENOR', isSaque = tipo === 'SAQUE';
+  show('.group-pj', isPJ || isSaque);
+  show('.group-p1', isPJ || isPF || isSaque);
+  show('.group-p-extra', isPJ);
+  show('.group-s', isPJ || isPF);
+  show('.group-menor', isMenor);
+  show('.group-saque', isSaque);
+
+  const lbl = document.getElementById('lbl-p1');
+  if (lbl) lbl.textContent = isSaque ? '👨‍💼 Representante Legal' : isPF ? '👤 Parceiro / Outorgante' : '👤 Outorgante / Parceiro 1';
+}
+
+function show(selector, visible) {
+  document.querySelectorAll(selector).forEach(el => {
+    el.classList.toggle('group-hidden', !visible);
+  });
+}
+
+function irParaFormulario() {
+  irTela(3);
+}
+
+// ============================================================
+// PDF UPLOAD
+// ============================================================
+function onPdfSelecionado(input) {
+  const lbl = document.getElementById('upload-label');
+  if (input.files[0]) {
+    lbl.innerHTML = `<span class="upload-success">✅ ${input.files[0].name}</span>`;
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ============================================================
+// EXTRAÇÃO COM IA (CLAUDE)
+// ============================================================
+async function extrairComIA() {
+  const fileInput = document.getElementById('file-pdf');
+  const textoManual = document.getElementById('texto-manual').value.trim();
+
+  if (!fileInput.files[0] && !textoManual) {
+    setStatus('error', '⚠️ Faça upload de um PDF ou cole o texto antes de extrair.');
+    return;
+  }
+
+  setStatus('info', '⏳ Processando...');
+  mostrarLoading(true);
+  document.getElementById('btn-extrair').disabled = true;
+
+  const systemPrompt = `Você é um extrator de dados para documentos jurídicos brasileiros.
+Analise o conteúdo fornecido e retorne SOMENTE um JSON válido, sem markdown, sem explicações.
+Estrutura obrigatória:
+{
+  "pj_nome": "", "pj_cnpj": "", "pj_cep": "", "pj_rua": "", "pj_num": "", "pj_comp": "", "pj_bairro": "", "pj_cid": "", "pj_uf": "",
+  "p1_nome": "", "p1_cpf": "", "p1_nac": "BRASILEIRO(A)", "p1_cep": "", "p1_rua": "", "p1_num": "", "p1_comp": "", "p1_bairro": "", "p1_cid": "", "p1_uf": "",
+  "p2_nome": "", "p2_cpf": "", "p2_nac": "BRASILEIRO(A)", "p2_cep": "", "p2_rua": "", "p2_num": "", "p2_comp": "", "p2_bairro": "", "p2_cid": "", "p2_uf": "",
+  "p3_nome": "", "p3_cpf": "", "p3_nac": "BRASILEIRO(A)", "p3_cep": "", "p3_rua": "", "p3_num": "", "p3_comp": "", "p3_bairro": "", "p3_cid": "", "p3_uf": "",
+  "s1_nome": "", "s1_cpf": "", "s1_nac": "BRASILEIRO(A)", "s1_cep": "", "s1_rua": "", "s1_num": "", "s1_comp": "", "s1_bairro": "", "s1_cid": "", "s1_uf": "",
+  "s2_nome": "", "s2_cpf": "", "s2_nac": "BRASILEIRO(A)", "s2_cep": "", "s2_rua": "", "s2_num": "", "s2_comp": "", "s2_bairro": "", "s2_cid": "", "s2_uf": "",
+  "s3_nome": "", "s3_cpf": "", "s3_nac": "BRASILEIRO(A)", "s3_cep": "", "s3_rua": "", "s3_num": "", "s3_comp": "", "s3_bairro": "", "s3_cid": "", "s3_uf": ""
+}
+Contexto: pj_* = Pessoa Jurídica, p1/p2/p3 = sócios/representantes/outorgantes, s1/s2/s3 = outorgados/terceiros operadores.
+Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca invente dados.`;
+
+  try {
+    let messages;
+
+    if (fileInput.files[0]) {
+      const base64 = await fileToBase64(fileInput.files[0]);
+      messages = [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+          { type: 'text', text: 'Extraia os dados deste documento conforme as instruções do sistema.' }
+        ]
+      }];
+    } else {
+      messages = [{
+        role: 'user',
+        content: `Extraia os dados do seguinte texto:\n\n${textoManual}`
+      }];
+    }
+
+    const headers = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
+    if (ANTHROPIC_API_KEY) headers['x-api-key'] = ANTHROPIC_API_KEY;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages
+      })
+    });
+
+    if (!resp.ok) throw new Error(`Erro ${resp.status} na API`);
+
+    const data = await resp.json();
+    const texto = data.content.map(b => b.text || '').join('');
+    const clean = texto.replace(/```json|```/g, '').trim();
+    const dados = JSON.parse(clean);
+
+    preencherFormulario(dados);
+    setStatus('success', '✅ Dados extraídos com sucesso! Revise e confirme.');
+    irTela(3);
+
+  } catch (e) {
+    setStatus('error', '❌ Erro ao extrair: ' + e.message);
+    console.error(e);
+  } finally {
+    mostrarLoading(false);
+    document.getElementById('btn-extrair').disabled = false;
+  }
+}
+
+function preencherFormulario(dados) {
+  Object.keys(dados).forEach(key => {
+    const el = document.getElementById(key);
+    if (el && dados[key]) el.value = dados[key].toString().toUpperCase();
+  });
+  // Ativa toggles automaticamente para seções com dados
+  ['p2', 'p3', 's2', 's3'].forEach(prefix => {
+    const toggle = document.getElementById('toggle_' + prefix);
+    if (toggle && dados[prefix + '_nome']) {
+      toggle.checked = true;
+      toggleSecao(prefix, true);
+    }
+  });
+}
+
+function setStatus(tipo, msg) {
+  const bar = document.getElementById('status-bar');
+  bar.className = `status-bar ${tipo} visible`;
+  bar.textContent = msg;
+}
+
+function mostrarLoading(show) {
+  document.getElementById('loading-overlay').classList.toggle('visible', show);
+}
+
+// ============================================================
+// TOGGLE DE SEÇÕES OPCIONAIS
+// ============================================================
+function toggleSecao(prefix, ativo) {
+  const sec = document.getElementById('section_' + prefix);
+  if (!sec) return;
+  sec.classList.toggle('hidden', !ativo);
+  sec.querySelectorAll('input').forEach(i => {
+    i.disabled = !ativo;
+    if (!ativo) i.value = '';
+  });
+}
+
+function copiarEnderecoRep() {
+  const checked = document.getElementById('toggle_end_menor').checked;
+  ['cep','rua','num','comp','bairro','cid','uf'].forEach(c => {
+    const m = document.getElementById('m_' + c);
+    const r = document.getElementById('r_' + c);
+    if (m && r) { m.value = checked ? r.value : ''; m.disabled = checked; }
+  });
+}
+
+// ============================================================
+// MÁSCARAS
+// ============================================================
+function maskCPF(i) {
+  let v = i.value.replace(/\D/g,'');
+  v = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  i.value = v;
+}
+function maskCNPJ(i) {
+  let v = i.value.replace(/\D/g,'');
+  v = v.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');
+  i.value = v;
+}
+function maskCEP(i) {
+  let v = i.value.replace(/\D/g,'');
+  i.value = v.replace(/^(\d{5})(\d)/,'$1-$2');
+}
+function maskMoeda(i) {
+  let v = i.value.replace(/\D/g,'');
+  const extId = i.id.replace('valor','extenso');
+  const extEl = document.getElementById(extId);
+  if (!v) { i.value = ''; if (extEl) extEl.value = ''; return; }
+  const num = parseInt(v) / 100;
+  i.value = num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  if (extEl) extEl.value = numeroExtenso(num).toUpperCase();
+}
+
+// ============================================================
+// NÚMERO POR EXTENSO
+// ============================================================
+function numeroExtenso(valor) {
+  if (!valor || isNaN(valor)) return '';
+  valor = parseFloat(valor);
+  if (valor === 0) return 'zero reais';
+  const un = ['','um','dois','três','quatro','cinco','seis','sete','oito','nove'];
+  const d10 = ['dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const dez = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const cen = ['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function g(n) {
+    if (n === 100) return 'cem';
+    let c = Math.floor(n/100), d = Math.floor((n%100)/10), u = n%10, o = '';
+    if (c) o += cen[c];
+    if (d===1) o += (o?' e ':'')+d10[u];
+    else { if (d>1) o += (o?' e ':'')+dez[d]; if (u>0) o += (o?' e ':'')+un[u]; }
+    return o;
+  }
+  let pi = Math.floor(valor), ct = Math.round((valor-pi)*100), r = '';
+  if (pi >= 1000) { let m = Math.floor(pi/1000); pi %= 1000; r += (m===1?'mil':g(m)+' mil'); if (pi>0) r += (pi<100||pi%100===0?' e ':', '); }
+  if (pi > 0) r += g(pi);
+  if (r) r += (Math.floor(valor)===1?' real':' reais');
+  if (ct > 0) { if (r) r += ' e '; r += g(ct)+(ct===1?' centavo':' centavos'); }
+  return r.charAt(0).toUpperCase()+r.slice(1);
+}
+
+// ============================================================
+// AUXILIARES
+// ============================================================
+function v(id) { const el = document.getElementById(id); return el ? el.value.toUpperCase() : ''; }
+function comp(id) { const val = v(id); return val ? ` / ${val}` : ''; }
+function dataExtenso() {
+  const m = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+  const d = new Date();
+  return `${d.getDate()} DE ${m[d.getMonth()]} DE ${d.getFullYear()}`;
+}
+
+// ============================================================
+// GERAÇÃO DE PDF
+// ============================================================
+function gerarDocumentos() {
+  if (typeof window.jspdf === 'undefined') { alert('jsPDF não carregou. Verifique a conexão.'); return; }
+  if (docAtual === 'MENOR') { gerarPDF('MENOR'); return; }
+  if (docAtual === 'SAQUE') { gerarPDF('SAQUE'); return; }
+  if (docAtual === 'PJ') { gerarPDF('PROC_PJ'); setTimeout(() => gerarPDF('TERMO_PJ'), 600); }
+  if (docAtual === 'PF') { gerarPDF('PROC_PF'); setTimeout(() => gerarPDF('TERMO_PF'), 600); }
+}
+
+function gerarPDF(tipo) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 20;
+  const M = 20, W = 170, LH = 7;
+
+  function txt(text, bold = false, align = 'justify') {
+    if (!text) return;
+    if (y > 275) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(text, W);
+    doc.text(lines, align === 'center' ? 105 : M, y, { align, maxWidth: W });
+    y += lines.length * LH + 2;
+  }
+
+  function assinatura(label, nome) {
+    if (!nome) return;
+    if (y > 260) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(11);
+    doc.text('___________________________________________________', 105, y, { align: 'center' });
+    y += 6;
+    doc.text((label + ' ' + nome).trim(), 105, y, { align: 'center' });
+    y += 15;
+  }
+
+  const p2on = document.getElementById('toggle_p2')?.checked;
+  const p3on = document.getElementById('toggle_p3')?.checked;
+  const s2on = document.getElementById('toggle_s2')?.checked;
+  const s3on = document.getElementById('toggle_s3')?.checked;
+
+  // ---- MENOR ----
+  if (tipo === 'MENOR') {
+    doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text('TERMO DE AUTORIZAÇÃO E RESPONSABILIDADE', 105, y, {align:'center'}); y += 15;
+    txt('REPRESENTANTE LEGAL:', true, 'left');
+    txt(`Nome: ${v('r_nome')}\nDocumento (CPF): ${v('r_cpf')}\nEndereço: ${v('r_rua')}, ${v('r_num')}${comp('r_comp')}, ${v('r_bairro')} - ${v('r_cid')}/${v('r_uf')} - CEP ${v('r_cep')}`, false, 'left'); y += 4;
+    txt('MENOR AUTORIZADO:', true, 'left');
+    txt(`Nome: ${v('m_nome')}\nDocumento (CPF): ${v('m_cpf')}\nEndereço: ${v('m_rua')}, ${v('m_num')}${comp('m_comp')}, ${v('m_bairro')} - ${v('m_cid')}/${v('m_uf')} - CEP ${v('m_cep')}`, false, 'left'); y += 4;
+    txt('Este termo tem como objeto a autorização, desde o momento do credenciamento na Plataforma Appmax e por tempo indeterminado, pelo representante legal acima qualificado, para que o menor utilize a Plataforma, reconhecendo as diretrizes estabelecidas nos Termos de Uso e Política de Privacidade da Appmax, disponíveis no site oficial https://appmax.com.br'); y += 4;
+    txt('O representante legal compromete-se a: (a) supervisionar o uso pelo menor; (b) assumir integral responsabilidade por quaisquer ações, inclusive chargebacks e estornos; (c) arcar com eventuais danos, isentando a Appmax de qualquer responsabilidade.'); y += 4;
+    txt(`Local e Data: ${v('r_cid')}/${v('r_uf')}, ${dataExtenso()}.`, false, 'left'); y += 15;
+    assinatura('Assinatura do Representante Legal:', v('r_nome'));
+    doc.save(`TERMO_MENOR_${(v('m_nome')||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    return;
+  }
+
+  // ---- SAQUE ----
+  if (tipo === 'SAQUE') {
+    doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text('TERMO DE AUTORIZAÇÃO E QUITAÇÃO', 105, y, {align:'center'}); y += 15;
+    txt('AUTORIZANTE:', true, 'left');
+    txt(`Razão Social: ${v('pj_nome')}\nCNPJ: ${v('pj_cnpj')}\nEndereço: ${v('pj_rua')}, ${v('pj_num')}${comp('pj_comp')}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}\nRepresentante: ${v('p1_nome')}, CPF ${v('p1_cpf')}`, false, 'left'); y += 4;
+    const v2txt = v('sq_valor2') ? ` E ${v('sq_valor2')} (${v('sq_extenso2')})` : '';
+    txt(`O autorizante autoriza expressamente que a APPMAX realize o depósito para saque de ${v('sq_valor1')} (${v('sq_extenso1')})${v2txt} na seguinte conta:\nCPF: ${v('sq_cpf_conta')} | Tipo: ${v('sq_tipo_conta')} | Banco: ${v('sq_banco')} | Agência: ${v('sq_agencia')} | Conta: ${v('sq_conta')} | PIX: ${v('sq_pix')}`, false, 'left'); y += 4;
+    txt('Ao receber os valores, o AUTORIZANTE dá plena quitação à APPMAX, nada mais tendo a reclamar, judicial ou extrajudicialmente. Este termo tem caráter excepcional e não gera obrigação futura da APPMAX.'); y += 4;
+    txt(`${v('pj_cid')}/${v('pj_uf')}, ${dataExtenso()}.`, false, 'left'); y += 15;
+    assinatura('', v('p1_nome'));
+    doc.save(`TERMO_SAQUE_${(v('pj_nome')||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    return;
+  }
+
+  // ---- PROC / TERMO PJ / PF ----
+  const isPF = tipo.includes('PF');
+  const isProc = tipo.includes('PROC');
+
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text(isProc ? 'PROCURAÇÃO PARTICULAR' : 'TERMO DE RESPONSABILIDADE', 105, y, {align:'center'}); y += 15;
+
+  txt(isProc ? 'OUTORGANTE:' : 'PARCEIRO:', true, 'left');
+  if (isPF) {
+    txt(`Nome: ${v('p1_nome')}\nNacionalidade: ${v('p1_nac')}\nCPF: ${v('p1_cpf')}\nEndereço: ${v('p1_rua')}, ${v('p1_num')}${comp('p1_comp')}, ${v('p1_bairro')} - ${v('p1_cid')}/${v('p1_uf')} - CEP ${v('p1_cep')}`, false, 'left');
+  } else {
+    txt(`Razão Social: ${v('pj_nome')}\nCNPJ: ${v('pj_cnpj')}\nEndereço: ${v('pj_rua')}, ${v('pj_num')}${comp('pj_comp')}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}`, false, 'left'); y += 3;
+    let rep = `Representada neste ato por seu representante legal, ${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}, residente e domiciliado à ${v('p1_rua')}, ${v('p1_num')}${comp('p1_comp')}, ${v('p1_bairro')} - ${v('p1_cid')}/${v('p1_uf')} - CEP ${v('p1_cep')}`;
+    if (p2on) rep += `, ${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}, residente e domiciliado à ${v('p2_rua')}, ${v('p2_num')}${comp('p2_comp')}, ${v('p2_bairro')} - ${v('p2_cid')}/${v('p2_uf')} - CEP ${v('p2_cep')}`;
+    if (p3on) rep += ` e ${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}, residente e domiciliado à ${v('p3_rua')}, ${v('p3_num')}${comp('p3_comp')}, ${v('p3_bairro')} - ${v('p3_cid')}/${v('p3_uf')} - CEP ${v('p3_cep')}`;
+    rep += '.';
+    txt(rep);
+  }
+  y += 5;
+
+  txt(isProc ? 'OUTORGADO:' : 'TERCEIRO OPERADOR:', true, 'left');
+
+  function socio(pre) {
+    if (!v(pre+'_nome')) return;
+    txt(`Nome: ${v(pre+'_nome')}\nNacionalidade: ${v(pre+'_nac')}\nCPF: ${v(pre+'_cpf')}\nEndereço: ${v(pre+'_rua')}, ${v(pre+'_num')}${comp(pre+'_comp')}, ${v(pre+'_bairro')} - ${v(pre+'_cid')}/${v(pre+'_uf')} - CEP ${v(pre+'_cep')}`, false, 'left');
+  }
+  socio('s1');
+  if (s2on) socio('s2');
+  if (s3on) socio('s3');
+  y += 5;
+
+  if (isProc) {
+    txt('PODERES:', true, 'left');
+    txt('Pelo presente instrumento particular de mandato, a OUTORGANTE, através de seu representante legal, nomeia e constitui como seu legítimo representante o OUTORGADO, conferindo-lhe poderes para: Acessar, gerir, administrar e realizar todos os negócios que sejam de interesse da Outorgante, relacionados à Plataforma Appmax (CNPJ nº 27.000.511/0001-60), incluindo a realização de saques; Representar a Outorgante em todos os atos em que seja necessária sua presença ou intervenção como negociante; Requerer e defender os direitos e interesses da Outorgante perante terceiros; Assumir responsabilidades perante terceiros, na forma do art. 1.022 do Código Civil; Praticar todos os atos indispensáveis ao desempenho deste mandato, utilizando os poderes necessários em Direito permitidos. O presente mandato é concedido por prazo indeterminado, podendo ser revogado a qualquer momento pela Outorgante mediante comunicação formal, com a devida ciência a terceiros interessados.');
+  } else {
+    txt('Este Termo de Responsabilidade tem por objeto a utilização da plataforma Appmax (CNPJ nº 27.000.511/0001-60) pelo Terceiro Operador acima identificado, em nome do Parceiro, conforme as diretrizes estabelecidas nos Termos de Uso e Política de Privacidade da Appmax, disponíveis no site oficial https://appmax.com.br');
+    y += 3;
+    txt('O Terceiro Operador declara que leu, compreendeu e concorda integralmente com os Termos de Uso e a Política de Privacidade da Appmax, comprometendo-se a respeitá-los durante toda a operação da plataforma.');
+    y += 3;
+    txt('Em caso de desligamento ou substituição do Terceiro Operador, o Parceiro compromete-se a notificar a Appmax imediatamente, fornecendo as devidas revogações e/ou novas autorizações, além de proceder à alteração de login e senha para evitar acessos indevidos.');
+    y += 3;
+    txt('Este Termo de Responsabilidade entra em vigor na data de sua assinatura e permanecerá válido enquanto o Parceiro tiver acesso autorizado à Plataforma Appmax, ou até que seja formalmente revogado pelo Parceiro.');
+  }
+  y += 5;
+
+  const loc = isPF ? `${v('p1_cid')}/${v('p1_uf')}` : `${v('pj_cid')}/${v('pj_uf')}`;
+  txt(`Local e Data: ${loc}, ${dataExtenso()}.`, false, 'left');
+  y += 15;
+
+  const lblOut = isProc ? 'Assinatura do Outorgante:' : 'Assinatura do PARCEIRO:';
+  assinatura(lblOut, v('p1_nome'));
+  if (!isPF && p2on) assinatura(lblOut, v('p2_nome'));
+  if (!isPF && p3on) assinatura(lblOut, v('p3_nome'));
+
+  if (!isProc || isPF) {
+    const lblS = isProc ? 'Assinatura do OUTORGADO:' : 'Assinatura do TERCEIRO OPERADOR:';
+    assinatura(lblS, v('s1_nome'));
+    if (s2on) assinatura(lblS, v('s2_nome'));
+    if (s3on) assinatura(lblS, v('s3_nome'));
+  }
+
+  const nome = isPF ? v('p1_nome') : v('pj_nome');
+  const prefixo = isProc ? 'PROCURACAO' : 'TERMO';
+  doc.save(`${prefixo}_${(nome||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+}
+</script>
+</body>
+</html>
