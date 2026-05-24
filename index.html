@@ -929,7 +929,7 @@ Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca in
     const resp = await fetch('https://sparkling-grass-bb3d.bolhasdeluz.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texto: textoCompleto })
+      body: JSON.stringify({ texto: textoCompleto, docType: docAtual })
     });
 
     if (!resp.ok) throw new Error(`Erro ${resp.status} no Worker`);
@@ -956,6 +956,37 @@ Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca in
 let entidadesExtraidas = [];
 
 function detectarEntidades(dados) {
+  // MENOR — estrutura fixa: representante + menor
+  if (docAtual === 'MENOR') {
+    return [
+      {
+        id: 'rep', tipo: 'pessoa', role: 'rep',
+        nome: dados.rep_nome || 'Representante Legal',
+        doc: dados.rep_cpf ? 'CPF: ' + dados.rep_cpf : '',
+        campos: {
+          nome: dados.rep_nome||'', cpf: dados.rep_cpf||'',
+          cep: dados.rep_cep||'', rua: dados.rep_rua||'', num: dados.rep_num||'',
+          comp: dados.rep_comp||'', bairro: dados.rep_bairro||'',
+          cid: dados.rep_cid||'', uf: dados.rep_uf||''
+        },
+        fixedLabel: '👨‍👧 Representante Legal', fixedRole: true
+      },
+      {
+        id: 'men', tipo: 'pessoa', role: 'men',
+        nome: dados.men_nome || 'Menor Autorizado',
+        doc: dados.men_cpf ? 'CPF: ' + dados.men_cpf : '',
+        campos: {
+          nome: dados.men_nome||'', cpf: dados.men_cpf||'',
+          cep: dados.men_cep||'', rua: dados.men_rua||'', num: dados.men_num||'',
+          comp: dados.men_comp||'', bairro: dados.men_bairro||'',
+          cid: dados.men_cid||'', uf: dados.men_uf||''
+        },
+        fixedLabel: '👦 Menor Autorizado', fixedRole: true,
+        mesmoEnd: dados.men_mesmo_end || false
+      }
+    ];
+  }
+
   const ents = [];
   if (dados.pj_nome) {
     ents.push({
@@ -1021,6 +1052,37 @@ function verificarFaltando(ent) {
   return campos
     .filter(c => !ent.campos[c.chave] || ent.campos[c.chave].toString().trim() === '')
     .map(c => c.label);
+}
+
+function buildMesmoEndCheck(ent) {
+  return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+      <input type="checkbox" id="check_mesmo_end_${ent.id}" 
+        ${ent.mesmoEnd ? 'checked' : ''}
+        onchange="toggleMesmoEndereco(this.checked, '${ent.id}')"
+        style="accent-color:var(--purple);width:15px;height:15px;">
+      Mesmo endereço do Representante Legal
+    </label>
+  </div>`;
+}
+
+function toggleMesmoEndereco(checked, menId) {
+  const rep = entidadesExtraidas.find(e => e.id === 'rep');
+  const men = entidadesExtraidas.find(e => e.id === menId);
+  if (!rep || !men) return;
+  ['cep','rua','num','comp','bairro','cid','uf'].forEach(key => {
+    const el = document.getElementById('field_' + menId + '_' + key);
+    if (el) {
+      if (checked) {
+        el.value = rep.campos[key] || '';
+        el.disabled = true;
+        men.campos[key] = el.value;
+      } else {
+        el.disabled = false;
+      }
+    }
+  });
+  if (men) men.mesmoEnd = checked;
 }
 
 function buildFieldsGrid(ent) {
@@ -1142,21 +1204,24 @@ function mostrarReview(dados) {
     div.className = 'entity-card ' + (temPend ? 'tem-pendencia' : 'completo');
     div.id = 'ecard_' + ent.id;
 
+    const roleHtml = ent.fixedRole
+      ? `<div class="entity-card-role"><span style="font-size:13px;font-weight:600;color:var(--purple);padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:#f8f7fc;">${ent.fixedLabel}</span></div>`
+      : `<div class="entity-card-role" onclick="event.stopPropagation()"><select id="role_${ent.id}">${getRoleOptions(ent.tipo, ent.role)}</select></div>`;
+
     div.innerHTML = `
       <div class="entity-card-header" onclick="toggleCard('${ent.id}')">
         <div class="entity-card-icon">${ent.tipo === 'empresa' ? '🏢' : '👤'}</div>
         <div class="entity-card-info">
-          <div class="entity-card-name">${ent.nome}</div>
+          <div class="entity-card-name">${ent.nome || (ent.fixedLabel || 'Sem nome')}</div>
           <div class="entity-card-doc">${ent.doc}</div>
           <div class="entity-card-missing">${missingHtml}</div>
         </div>
-        <div class="entity-card-role" onclick="event.stopPropagation()">
-          <select id="role_${ent.id}">${getRoleOptions(ent.tipo, ent.role)}</select>
-        </div>
+        ${roleHtml}
         <div class="expand-arrow">▼</div>
       </div>
       <div class="entity-card-fields">
         ${buildFieldsGrid(ent)}
+        ${ent.id === 'men' ? buildMesmoEndCheck(ent) : ''}
       </div>
     `;
     container.appendChild(div);
@@ -1174,9 +1239,27 @@ function gerarDocsFromReview() {
     const allKeys = ['nome','cnpj','cpf','nac','cep','rua','num','comp','bairro','cid','uf'];
     allKeys.forEach(key => {
       const el = document.getElementById(`field_${ent.id}_${key}`);
-      if (el) ent.campos[key] = el.value;
+      if (el && !el.disabled) ent.campos[key] = el.value;
     });
   });
+
+  // MENOR — fluxo próprio
+  if (docAtual === 'MENOR') {
+    const rep = entidadesExtraidas.find(e => e.id === 'rep');
+    const men = entidadesExtraidas.find(e => e.id === 'men');
+    if (rep) { Object.keys(rep.campos).forEach(k => { const el = document.getElementById('r_'+k); if (el) el.value = (rep.campos[k]||'').toUpperCase(); }); }
+    if (men) { Object.keys(men.campos).forEach(k => { const el = document.getElementById('m_'+k); if (el) el.value = (men.campos[k]||'').toUpperCase(); }); }
+    
+    // Pendências
+    const pendencias = [];
+    [rep, men].filter(Boolean).forEach(ent => {
+      const faltando = verificarFaltando(ent);
+      if (faltando.length > 0) pendencias.push({ nome: ent.fixedLabel || ent.nome, campos: faltando });
+    });
+    if (pendencias.length > 0) mostrarPendencias(pendencias);
+    else gerarDocumentos();
+    return;
+  }
 
   const remapped = {};
   const pendencias = [];
@@ -1493,17 +1576,67 @@ function gerarPDF(tipo) {
 
   // ---- MENOR ----
   if (tipo === 'MENOR') {
+    // Usa campos dos cards se disponível, senão form
+    const rep = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'rep') : null;
+    const men = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'men') : null;
+
+    const get = (entId, key, formId) => {
+      const ent = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === entId) : null;
+      if (ent && ent.campos[key]) return ent.campos[key].toString().toUpperCase();
+      return v(formId);
+    };
+
+    const rNome   = get('rep','nome','r_nome');
+    const rCpf    = get('rep','cpf','r_cpf');
+    const rRua    = get('rep','rua','r_rua');
+    const rNum    = get('rep','num','r_num');
+    const rComp   = get('rep','comp','r_comp');
+    const rBairro = get('rep','bairro','r_bairro');
+    const rCid    = get('rep','cid','r_cid');
+    const rUf     = get('rep','uf','r_uf');
+    const rCep    = get('rep','cep','r_cep');
+
+    const mNome   = get('men','nome','m_nome');
+    const mCpf    = get('men','cpf','m_cpf');
+    const mRua    = get('men','rua','m_rua');
+    const mNum    = get('men','num','m_num');
+    const mComp   = get('men','comp','m_comp');
+    const mBairro = get('men','bairro','m_bairro');
+    const mCid    = get('men','cid','m_cid');
+    const mUf     = get('men','uf','m_uf');
+    const mCep    = get('men','cep','m_cep');
+
+    const compR = rComp && rComp !== '-' ? ', ' + rComp : '';
+    const compM = mComp && mComp !== '-' ? ', ' + mComp : '';
+
     doc.setFontSize(14); doc.setFont('helvetica','bold');
     doc.text('TERMO DE AUTORIZAÇÃO E RESPONSABILIDADE', 105, y, {align:'center'}); y += 15;
+
     txt('REPRESENTANTE LEGAL:', true, 'left');
-    txt(`Nome: ${v('r_nome')}\nDocumento (CPF): ${v('r_cpf')}\nEndereço: ${v('r_rua')}, ${v('r_num')}${comp('r_comp')}, ${v('r_bairro')} - ${v('r_cid')}/${v('r_uf')} - CEP ${v('r_cep')}`, false, 'left'); y += 4;
+    txt(`Nome: ${rNome}`, false, 'left');
+    txt(`Documento de Identificação (CPF): ${rCpf}`, false, 'left');
+    txt(`Endereço: ${rRua}, ${rNum}${compR}, ${rBairro} - ${rCid}/${rUf} - ${rCep}`, false, 'left');
+    y += 4;
+
     txt('MENOR AUTORIZADO:', true, 'left');
-    txt(`Nome: ${v('m_nome')}\nDocumento (CPF): ${v('m_cpf')}\nEndereço: ${v('m_rua')}, ${v('m_num')}${comp('m_comp')}, ${v('m_bairro')} - ${v('m_cid')}/${v('m_uf')} - CEP ${v('m_cep')}`, false, 'left'); y += 4;
-    txt('Este termo tem como objeto a autorização, desde o momento do credenciamento na Plataforma Appmax e por tempo indeterminado, pelo representante legal acima qualificado, para que o menor utilize a Plataforma, reconhecendo as diretrizes estabelecidas nos Termos de Uso e Política de Privacidade da Appmax, disponíveis no site oficial https://appmax.com.br'); y += 4;
-    txt('O representante legal compromete-se a: (a) supervisionar o uso pelo menor; (b) assumir integral responsabilidade por quaisquer ações, inclusive chargebacks e estornos; (c) arcar com eventuais danos, isentando a Appmax de qualquer responsabilidade.'); y += 4;
-    txt(`Local e Data: ${v('r_cid')}/${v('r_uf')}, ${dataExtenso()}.`, false, 'left'); y += 15;
-    assinatura('Assinatura do Representante Legal:', v('r_nome'));
-    doc.save(`TERMO_MENOR_${(v('m_nome')||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    txt(`Nome: ${mNome}`, false, 'left');
+    txt(`Documento de Identificação (CPF): ${mCpf}`, false, 'left');
+    txt(`Endereço: ${mRua}, ${mNum}${compM}, ${mBairro} - ${mCid}/${mUf} - ${mCep}`, false, 'left');
+    y += 5;
+
+    txt('Este termo tem como objeto a autorização, desde o momento do credenciamento na Plataforma Appmax e por tempo indeterminado, pelo representante legal acima qualificado, para que o menor utilize a Plataforma, reconhecendo as diretrizes estabelecidas nos Termos de Uso e Política de Privacidade da Appmax, disponíveis no site oficial da Appmax https://appmax.com.br');
+    y += 3;
+    txt('O representante legal, ao assinar este termo, se compromete a:');
+    txt('a) Supervisionar o uso da Plataforma Appmax (CNPJ nº 27.000.511/0001-60) pelo menor, orientando-o sobre as diretrizes de segurança e bom uso do ambiente digital.');
+    txt('b) Assumir integral responsabilidade por quaisquer ações realizadas pelo menor na plataforma, inclusive eventuais infrações aos Termos de Uso, inclusive por eventuais débitos que possam vir a surgir, em decorrência de chargebacks e estornos.');
+    txt('c) Arcar com eventuais danos ou prejuízos decorrentes do uso da plataforma pelo menor, isentando a Appmax de qualquer responsabilidade nesses casos.');
+    y += 3;
+    txt('O representante legal declara que as informações fornecidas são verídicas e atualizadas, assumindo plena responsabilidade pela veracidade das mesmas.');
+    y += 5;
+    txt(`Local e Data: ${rCid}/${rUf}, ${dataExtenso()}`, false, 'left');
+    y += 15;
+    assinatura('Assinatura do Representante Legal:', rNome);
+    doc.save(`TERMO_MENOR_${(mNome||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
     return;
   }
 
