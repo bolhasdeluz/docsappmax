@@ -1091,12 +1091,38 @@
               <tr><td>Retenção de Garantia (Não antecipável)</td><td class="text-right" id="c_vGar30">-</td><td class="text-right" id="c_vGarAnt">-</td></tr>
               <tr><td>Desconto de Antecipação Comercial</td><td class="text-right" id="c_vAnte30">R$ 0,00</td><td class="text-right" id="c_vAnteAnt">-</td></tr>
               <tr><td>Tarifa de Saque / Transferência</td><td class="text-right" id="c_vSaque30">-</td><td class="text-right" id="c_vSaqueAnt">-</td></tr>
-              <tr class="c-row-total"><td>VALOR REAL TOTAL A RECEBER NA CONTA</td><td class="text-right" id="c_vFinal30">R$ 0,00</td><td class="text-right" id="c_vFinalAnt">R$ 0,00</td></tr>
             </tbody>
           </table>
-        </div>
-        <div class="c-footer">
-          <b>Nota de Auditoria:</b> O valor "Não Antecipável" corresponde à taxa de garantia retida temporariamente. Custo da antecipação imediata: <b id="c_vDif" style="color:var(--cp);">R$ 0,00</b>
+
+          <!-- RESUMO FINAL -->
+          <div style="margin-top:16px;border-radius:10px;overflow:hidden;border:1px solid var(--bc);">
+
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:#1e3a5f;color:white;">
+              <div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.75;letter-spacing:.5px;">Disponível para Antecipação</div>
+                <div style="font-size:18px;font-weight:700;margin-top:3px;" id="c_vFinalAnt">R$ 0,00</div>
+              </div>
+              <div style="font-size:22px;opacity:.6;">⚡</div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:#2d4a6b;color:white;border-top:1px solid rgba(255,255,255,.1);">
+              <div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.75;letter-spacing:.5px;">Valor Não Antecipável · Liberado em <span id="c_prazoLabel">30</span> dias (<span id="c_dataLib">--/--/----</span>)</div>
+                <div style="font-size:18px;font-weight:700;margin-top:3px;" id="c_vGarFinal">R$ 0,00</div>
+              </div>
+              <div style="font-size:22px;opacity:.6;">🔒</div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 18px;background:var(--cp);color:white;border-top:1px solid rgba(255,255,255,.1);">
+              <div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.8;letter-spacing:.5px;">Total Líquido Real</div>
+                <div style="font-size:22px;font-weight:800;margin-top:3px;" id="c_vFinal30">R$ 0,00</div>
+              </div>
+              <div style="font-size:22px;opacity:.7;">💰</div>
+            </div>
+
+          </div>
+
         </div>
       </div>
     </div>
@@ -2775,8 +2801,19 @@ function calcUpdate() {
   s('c_vGar30', '- '+calcFmt(dGar)); s('c_vGarAnt', '- '+calcFmt(dGar));
   s('c_vAnte30', calcFmt(0)); s('c_vAnteAnt', '- '+calcFmt(dAnte));
   s('c_vSaque30', '- '+calcFmt(saqueFinal)); s('c_vSaqueAnt', '- '+calcFmt(saqueFinal));
-  s('c_vFinal30', calcFmt(res30)); s('c_vFinalAnt', calcFmt(resAnt));
-  s('c_vDif', calcFmt(res30 - resAnt));
+  s('c_vFinal30', calcFmt(res30 + dGar));  // Total Líquido Real = antecipável + não antecipável
+  s('c_vFinalAnt', calcFmt(resAnt));         // Disponível para antecipação
+  s('c_vGarFinal', calcFmt(dGar));           // Não antecipável
+
+  // Prazo label + data de liberação
+  const prazoEl = document.getElementById('c_prazoLabel');
+  if (prazoEl) prazoEl.textContent = val.prazoGarantia;
+  const dataLibEl = document.getElementById('c_dataLib');
+  if (dataLibEl) {
+    const hoje = new Date();
+    hoje.setDate(hoje.getDate() + val.prazoGarantia);
+    dataLibEl.textContent = hoje.toLocaleDateString('pt-BR');
+  }
 
   if (g('c_chatTextarea')) {
     g('c_chatTextarea').value =
