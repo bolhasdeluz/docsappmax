@@ -1302,28 +1302,30 @@ function detectarEntidades(dados) {
     ];
   }
 
-  // REVOG_PF — outorgante (p1) + outorgado (s1)
+  // REVOG_PF — outorgante (p1) + outorgados (s1, s2, s3)
   if (docAtual === 'REVOG_PF') {
-    return [
-      {
-        id: 'p1', tipo: 'pessoa', role: 'p1',
-        nome: dados.p1_nome || 'Outorgante',
-        doc: dados.p1_cpf ? 'CPF: ' + dados.p1_cpf : '',
-        campos: { nome: dados.p1_nome||'', cpf: dados.p1_cpf||'', nac: dados.p1_nac||'BRASILEIRO(A)',
-          cep: dados.p1_cep||'', rua: dados.p1_rua||'', num: dados.p1_num||'',
-          comp: dados.p1_comp||'', bairro: dados.p1_bairro||'', cid: dados.p1_cid||'', uf: dados.p1_uf||'' },
-        fixedLabel: '👤 Outorgante (Parceiro)', fixedRole: true
-      },
-      {
-        id: 's1', tipo: 'pessoa', role: 's1',
-        nome: dados.s1_nome || 'Outorgado',
-        doc: dados.s1_cpf ? 'CPF: ' + dados.s1_cpf : '',
-        campos: { nome: dados.s1_nome||'', cpf: dados.s1_cpf||'', nac: dados.s1_nac||'BRASILEIRO(A)',
-          cep: dados.s1_cep||'', rua: dados.s1_rua||'', num: dados.s1_num||'',
-          comp: dados.s1_comp||'', bairro: dados.s1_bairro||'', cid: dados.s1_cid||'', uf: dados.s1_uf||'' },
-        fixedLabel: '👤 Outorgado (Sócio)', fixedRole: true
-      }
-    ];
+    const ents = [];
+    ents.push({
+      id: 'p1', tipo: 'pessoa', role: 'p1',
+      nome: dados.p1_nome || 'Outorgante',
+      doc: dados.p1_cpf ? 'CPF: ' + dados.p1_cpf : '',
+      campos: { nome: dados.p1_nome||'', cpf: dados.p1_cpf||'', nac: dados.p1_nac||'BRASILEIRO(A)',
+        cep: dados.p1_cep||'', rua: dados.p1_rua||'', num: dados.p1_num||'',
+        comp: dados.p1_comp||'', bairro: dados.p1_bairro||'', cid: dados.p1_cid||'', uf: dados.p1_uf||'' },
+      fixedLabel: '👤 Outorgante', fixedRole: true
+    });
+    ['s1','s2','s3'].forEach((pre, i) => {
+      if (dados[pre+'_nome']) ents.push({
+        id: pre, tipo: 'pessoa', role: pre,
+        nome: dados[pre+'_nome'],
+        doc: dados[pre+'_cpf'] ? 'CPF: ' + dados[pre+'_cpf'] : '',
+        campos: { nome: dados[pre+'_nome']||'', cpf: dados[pre+'_cpf']||'', nac: dados[pre+'_nac']||'BRASILEIRO(A)',
+          cep: dados[pre+'_cep']||'', rua: dados[pre+'_rua']||'', num: dados[pre+'_num']||'',
+          comp: dados[pre+'_comp']||'', bairro: dados[pre+'_bairro']||'', cid: dados[pre+'_cid']||'', uf: dados[pre+'_uf']||'' },
+        fixedLabel: `👤 Outorgado ${i > 0 ? i+1 : ''}`.trim(), fixedRole: true
+      });
+    });
+    return ents;
   }
 
   // REVOG_PJ — empresa + representantes + outorgados (sócios)
@@ -1590,6 +1592,19 @@ function toggleCard(entId) {
 
 function mostrarReview(dados) {
   entidadesExtraidas = detectarEntidades(dados);
+
+  // Auto-fill data original se extraída
+  if (dados.data_proc_original) {
+    const dateInput = document.getElementById('data_original_input');
+    if (dateInput) {
+      // Convert DD/MM/AAAA → AAAA-MM-DD for date input
+      const parts = dados.data_proc_original.split('/');
+      if (parts.length === 3) {
+        dateInput.value = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+      }
+    }
+  }
+
   const container = document.getElementById('review-cards');
   container.innerHTML = '';
 
