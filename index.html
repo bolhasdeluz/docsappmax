@@ -309,6 +309,44 @@
     .loading-text { font-weight: 600; color: var(--purple); font-size: 15px; }
     .loading-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
+
+    /* REVIEW CARDS */
+    .entity-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .entity-card-icon { font-size: 26px; flex-shrink: 0; }
+    .entity-card-info { flex: 1; min-width: 0; }
+    .entity-card-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entity-card-doc { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+    .entity-card-role { flex-shrink: 0; }
+    .entity-card-role select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      background: white;
+      min-width: 220px;
+      cursor: pointer;
+    }
+    .entity-card-role select:focus {
+      outline: none;
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(92,61,153,0.09);
+    }
+    @media (max-width: 600px) {
+      .entity-card { flex-wrap: wrap; }
+      .entity-card-role select { min-width: 100%; width: 100%; }
+    }
+
     /* HIDDEN */
     .hidden { display: none !important; }
     .group-hidden { display: none !important; }
@@ -396,6 +434,17 @@
         <button class="btn btn-ai" id="btn-extrair" onclick="extrairComIA()">🤖 Extrair com IA</button>
         <button class="btn btn-manual" onclick="irParaFormulario()">✏️ Preencher Manualmente</button>
       </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== TELA REVIEW: CARDS ===================== -->
+  <div id="tela-review" class="screen">
+    <div class="screen-title">Dados encontrados</div>
+    <div class="screen-sub">Defina o papel de cada pessoa no documento e clique em gerar</div>
+    <div id="review-cards"></div>
+    <div class="btn-row" style="margin-top: 20px;">
+      <button class="btn btn-generate" onclick="gerarDocsFromReview()">📥 Gerar PDFs</button>
     </div>
   </div>
 
@@ -610,16 +659,32 @@ let telaAtual = 1;
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-function irTela(num) {
+let telaHistorico = [];
+
+function irTela(id) {
+  telaHistorico.push(telaAtual);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('tela-' + num).classList.add('active');
-  telaAtual = num;
-  document.getElementById('btn-voltar').classList.toggle('visible', num > 1);
+  const el = typeof id === 'number' 
+    ? document.getElementById('tela-' + id) 
+    : document.getElementById(id);
+  if (el) el.classList.add('active');
+  telaAtual = id;
+  document.getElementById('btn-voltar').classList.toggle('visible', telaHistorico.length > 0);
   window.scrollTo(0, 0);
 }
 
 function voltarTela() {
-  if (telaAtual > 1) irTela(telaAtual - 1);
+  if (telaHistorico.length > 0) {
+    const prev = telaHistorico.pop();
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = typeof prev === 'number' 
+      ? document.getElementById('tela-' + prev) 
+      : document.getElementById(prev);
+    if (el) el.classList.add('active');
+    telaAtual = prev;
+    document.getElementById('btn-voltar').classList.toggle('visible', telaHistorico.length > 0);
+    window.scrollTo(0, 0);
+  }
 }
 
 function selecionarDoc(tipo) {
@@ -736,9 +801,8 @@ Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca in
     const data = await resp.json();
     const dados = JSON.parse(data.choices[0].message.content);
 
-    preencherFormulario(dados);
-    setStatus('success', '✅ Dados extraídos com sucesso! Revise e confirme.');
-    irTela(3);
+    mostrarReview(dados);
+    setStatus('success', '✅ Dados extraídos com sucesso! Confirme os papéis e gere.');
 
   } catch (e) {
     setStatus('error', '❌ Erro ao extrair: ' + e.message);
@@ -747,6 +811,127 @@ Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca in
     mostrarLoading(false);
     document.getElementById('btn-extrair').disabled = false;
   }
+}
+
+
+// ============================================================
+// REVIEW — CARDS COM PAPEL
+// ============================================================
+let entidadesExtraidas = [];
+
+function detectarEntidades(dados) {
+  const ents = [];
+  if (dados.pj_nome) {
+    ents.push({
+      id: 'pj', tipo: 'empresa',
+      nome: dados.pj_nome,
+      doc: dados.pj_cnpj ? 'CNPJ: ' + dados.pj_cnpj : '',
+      campos: { nome: dados.pj_nome, cnpj: dados.pj_cnpj, cep: dados.pj_cep, rua: dados.pj_rua, num: dados.pj_num, comp: dados.pj_comp, bairro: dados.pj_bairro, cid: dados.pj_cid, uf: dados.pj_uf },
+      role: 'pj'
+    });
+  }
+  ['p1','p2','p3','s1','s2','s3'].forEach(pre => {
+    if (dados[pre + '_nome']) {
+      ents.push({
+        id: pre, tipo: 'pessoa',
+        nome: dados[pre + '_nome'],
+        doc: dados[pre + '_cpf'] ? 'CPF: ' + dados[pre + '_cpf'] : '',
+        campos: { nome: dados[pre+'_nome'], cpf: dados[pre+'_cpf'], nac: dados[pre+'_nac'] || 'BRASILEIRO(A)', cep: dados[pre+'_cep'], rua: dados[pre+'_rua'], num: dados[pre+'_num'], comp: dados[pre+'_comp'], bairro: dados[pre+'_bairro'], cid: dados[pre+'_cid'], uf: dados[pre+'_uf'] },
+        role: pre
+      });
+    }
+  });
+  return ents;
+}
+
+function getRoleOptions(tipo, roleAtual) {
+  const opts = tipo === 'empresa'
+    ? [['pj', 'Empresa (Outorgante PJ)']]
+    : [
+        ['p1', 'Outorgante / Parceiro 1'],
+        ['p2', 'Outorgante / Parceiro 2'],
+        ['p3', 'Outorgante / Parceiro 3'],
+        ['s1', 'Outorgado / Terceiro Operador 1'],
+        ['s2', 'Outorgado / Terceiro Operador 2'],
+        ['s3', 'Outorgado / Terceiro Operador 3'],
+      ];
+  return opts.map(([val, label]) =>
+    `<option value="${val}" ${val === roleAtual ? 'selected' : ''}>${label}</option>`
+  ).join('');
+}
+
+function mostrarReview(dados) {
+  entidadesExtraidas = detectarEntidades(dados);
+  const container = document.getElementById('review-cards');
+  container.innerHTML = '';
+
+  if (entidadesExtraidas.length === 0) {
+    container.innerHTML = '<div class="card" style="text-align:center;color:var(--muted);">Nenhum dado identificado. Tente preencher manualmente.</div>';
+  }
+
+  entidadesExtraidas.forEach(ent => {
+    const div = document.createElement('div');
+    div.className = 'entity-card';
+    div.innerHTML = `
+      <div class="entity-card-icon">${ent.tipo === 'empresa' ? '🏢' : '👤'}</div>
+      <div class="entity-card-info">
+        <div class="entity-card-name">${ent.nome}</div>
+        <div class="entity-card-doc">${ent.doc}</div>
+      </div>
+      <div class="entity-card-role">
+        <select id="role_${ent.id}">${getRoleOptions(ent.tipo, ent.role)}</select>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  irTela('tela-review');
+}
+
+function gerarDocsFromReview() {
+  const remapped = {};
+
+  entidadesExtraidas.forEach(ent => {
+    const roleEl = document.getElementById('role_' + ent.id);
+    const role = roleEl ? roleEl.value : ent.role;
+
+    if (role === 'pj') {
+      Object.assign(remapped, {
+        pj_nome: ent.campos.nome, pj_cnpj: ent.campos.cnpj,
+        pj_cep: ent.campos.cep, pj_rua: ent.campos.rua, pj_num: ent.campos.num,
+        pj_comp: ent.campos.comp, pj_bairro: ent.campos.bairro,
+        pj_cid: ent.campos.cid, pj_uf: ent.campos.uf
+      });
+    } else {
+      remapped[role+'_nome']   = ent.campos.nome;
+      remapped[role+'_cpf']    = ent.campos.cpf;
+      remapped[role+'_nac']    = ent.campos.nac;
+      remapped[role+'_cep']    = ent.campos.cep;
+      remapped[role+'_rua']    = ent.campos.rua;
+      remapped[role+'_num']    = ent.campos.num;
+      remapped[role+'_comp']   = ent.campos.comp;
+      remapped[role+'_bairro'] = ent.campos.bairro;
+      remapped[role+'_cid']    = ent.campos.cid;
+      remapped[role+'_uf']     = ent.campos.uf;
+    }
+  });
+
+  // Preenche os campos do form
+  Object.keys(remapped).forEach(key => {
+    const el = document.getElementById(key);
+    if (el && remapped[key]) el.value = remapped[key].toString().toUpperCase();
+  });
+
+  // Ativa toggles para seções com dados
+  ['p2','p3','s2','s3'].forEach(pre => {
+    const toggle = document.getElementById('toggle_' + pre);
+    if (toggle && remapped[pre + '_nome']) {
+      toggle.checked = true;
+      toggleSecao(pre, true);
+    }
+  });
+
+  gerarDocumentos();
 }
 
 function preencherFormulario(dados) {
