@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gerador de Documentos · Appmax</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   
   <style>
@@ -595,7 +596,10 @@
 // CONFIGURAÇÃO DA API
 // Para usar no GitHub Pages, coloque sua chave Claude aqui:
 // ============================================================
-const ANTHROPIC_API_KEY = ''; // Ex: 'sk-ant-...'
+const GROQ_API_KEY = 'sua-chave-groq-aqui'; // Ex: 'gsk_...'
+
+// Configura worker do PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ============================================================
 // ESTADO GLOBAL
@@ -669,7 +673,22 @@ function fileToBase64(file) {
 }
 
 // ============================================================
-// EXTRAÇÃO COM IA (CLAUDE)
+// EXTRAÇÃO DE TEXTO DO PDF (PDF.js)
+// ============================================================
+async function extrairTextoPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let texto = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    texto += content.items.map(item => item.str).join(' ') + '\n';
+  }
+  return texto;
+}
+
+// ============================================================
+// EXTRAÇÃO COM IA (GROQ)
 // ============================================================
 async function extrairComIA() {
   const fileInput = document.getElementById('file-pdf');
@@ -700,44 +719,33 @@ Contexto: pj_* = Pessoa Jurídica, p1/p2/p3 = sócios/representantes/outorgantes
 Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca invente dados.`;
 
   try {
-    let messages;
-
+    let textoFinal = textoManual;
     if (fileInput.files[0]) {
-      const base64 = await fileToBase64(fileInput.files[0]);
-      messages = [{
-        role: 'user',
-        content: [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-          { type: 'text', text: 'Extraia os dados deste documento conforme as instruções do sistema.' }
-        ]
-      }];
-    } else {
-      messages = [{
-        role: 'user',
-        content: `Extraia os dados do seguinte texto:\n\n${textoManual}`
-      }];
+      textoFinal = await extrairTextoPDF(fileInput.files[0]);
+      if (!textoFinal.trim()) throw new Error('Não foi possível extrair texto do PDF.');
     }
 
-    const headers = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
-    if (ANTHROPIC_API_KEY) headers['x-api-key'] = ANTHROPIC_API_KEY;
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`
+      },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Extraia os dados do seguinte texto:\n\n${textoFinal}` }
+        ]
       })
     });
 
-    if (!resp.ok) throw new Error(`Erro ${resp.status} na API`);
+    if (!resp.ok) throw new Error(`Erro ${resp.status} na API Groq`);
 
     const data = await resp.json();
-    const texto = data.content.map(b => b.text || '').join('');
-    const clean = texto.replace(/```json|```/g, '').trim();
-    const dados = JSON.parse(clean);
+    const dados = JSON.parse(data.choices[0].message.content);
 
     preencherFormulario(dados);
     setStatus('success', '✅ Dados extraídos com sucesso! Revise e confirme.');
