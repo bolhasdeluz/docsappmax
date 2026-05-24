@@ -310,6 +310,45 @@
     .loading-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
 
+
+    /* CAMPOS FALTANDO */
+    .entity-card-missing { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+    .missing-tag {
+      background: #fff3e0; border: 1px solid #ffb74d;
+      color: #e65100; border-radius: 4px;
+      padding: 2px 8px; font-size: 11px; font-weight: 600;
+    }
+    .entity-card.tem-pendencia { border-left: 3px solid #f59e0b; }
+    .entity-card.completo { border-left: 3px solid #22c55e; }
+
+    /* TELA PENDÊNCIAS */
+    .pend-card {
+      background: #fff8f0; border: 1px solid #fcd34d;
+      border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px;
+    }
+    .pend-card-nome { font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+    .pend-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pend-tag {
+      background: #fee2e2; border: 1px solid #fca5a5;
+      color: #b91c1c; border-radius: 4px;
+      padding: 3px 10px; font-size: 12px; font-weight: 600;
+    }
+    .msg-box {
+      background: #f0fdf4; border: 1px solid #86efac;
+      border-radius: var(--radius); padding: 16px;
+      font-family: 'DM Mono', monospace; font-size: 12px;
+      white-space: pre-wrap; line-height: 1.6; color: #166534;
+      margin-top: 12px;
+    }
+    .btn-copy {
+      background: var(--purple); color: white; border: none;
+      border-radius: 7px; padding: 10px 20px; font-size: 13px;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-copy:hover { background: var(--purple-light); }
+    .btn-copy.copiado { background: var(--green); }
+
     /* REVIEW CARDS */
     .entity-card {
       background: white;
@@ -456,6 +495,24 @@
     <div id="review-cards"></div>
     <div class="btn-row" style="margin-top: 20px;">
       <button class="btn btn-generate" onclick="gerarDocsFromReview()">📥 Gerar PDFs</button>
+    </div>
+  </div>
+
+
+  <!-- ===================== TELA PENDÊNCIAS ===================== -->
+  <div id="tela-pendencias" class="screen">
+    <div class="screen-title" id="pend-titulo">Pendências encontradas</div>
+    <div class="screen-sub" id="pend-sub"></div>
+    <div id="pend-cards"></div>
+    <div id="pend-msg-bloco" class="card" style="margin-top:16px;">
+      <div style="font-weight:600; margin-bottom:8px; color: var(--purple);">📋 Mensagem pronta para o parceiro</div>
+      <div class="msg-box" id="pend-msg-texto"></div>
+      <div style="margin-top:12px;">
+        <button class="btn-copy" id="btn-copiar" onclick="copiarMensagem()">📋 Copiar mensagem</button>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-generate" onclick="gerarDocumentos()">📥 Gerar PDFs mesmo assim</button>
     </div>
   </div>
 
@@ -882,6 +939,33 @@ function getRoleOptions(tipo, roleAtual) {
   ).join('');
 }
 
+const CAMPOS_OBRIGATORIOS_PF = [
+  { chave: 'cpf',    label: 'CPF' },
+  { chave: 'rua',    label: 'Endereço' },
+  { chave: 'num',    label: 'Número' },
+  { chave: 'bairro', label: 'Bairro' },
+  { chave: 'cep',    label: 'CEP' },
+  { chave: 'cid',    label: 'Cidade' },
+  { chave: 'uf',     label: 'UF' },
+  { chave: 'nac',    label: 'Nacionalidade' },
+];
+const CAMPOS_OBRIGATORIOS_PJ = [
+  { chave: 'cnpj',   label: 'CNPJ' },
+  { chave: 'cep',    label: 'CEP' },
+  { chave: 'rua',    label: 'Endereço' },
+  { chave: 'num',    label: 'Número' },
+  { chave: 'bairro', label: 'Bairro' },
+  { chave: 'cid',    label: 'Cidade' },
+  { chave: 'uf',     label: 'UF' },
+];
+
+function verificarFaltando(ent) {
+  const campos = ent.tipo === 'empresa' ? CAMPOS_OBRIGATORIOS_PJ : CAMPOS_OBRIGATORIOS_PF;
+  return campos
+    .filter(c => !ent.campos[c.chave] || ent.campos[c.chave].toString().trim() === '')
+    .map(c => c.label);
+}
+
 function mostrarReview(dados) {
   entidadesExtraidas = detectarEntidades(dados);
   const container = document.getElementById('review-cards');
@@ -892,13 +976,21 @@ function mostrarReview(dados) {
   }
 
   entidadesExtraidas.forEach(ent => {
+    const faltando = verificarFaltando(ent);
+    const temPend = faltando.length > 0;
     const div = document.createElement('div');
-    div.className = 'entity-card';
+    div.className = 'entity-card ' + (temPend ? 'tem-pendencia' : 'completo');
+
+    const missingHtml = temPend
+      ? `<div class="entity-card-missing">${faltando.map(f => `<span class="missing-tag">⚠ ${f}</span>`).join('')}</div>`
+      : `<div class="entity-card-missing"><span style="color:var(--green);font-size:12px;font-weight:600;">✅ Completo</span></div>`;
+
     div.innerHTML = `
       <div class="entity-card-icon">${ent.tipo === 'empresa' ? '🏢' : '👤'}</div>
       <div class="entity-card-info">
         <div class="entity-card-name">${ent.nome}</div>
         <div class="entity-card-doc">${ent.doc}</div>
+        ${missingHtml}
       </div>
       <div class="entity-card-role">
         <select id="role_${ent.id}">${getRoleOptions(ent.tipo, ent.role)}</select>
@@ -912,6 +1004,7 @@ function mostrarReview(dados) {
 
 function gerarDocsFromReview() {
   const remapped = {};
+  const pendencias = [];
 
   entidadesExtraidas.forEach(ent => {
     const roleEl = document.getElementById('role_' + ent.id);
@@ -936,6 +1029,10 @@ function gerarDocsFromReview() {
       remapped[role+'_cid']    = ent.campos.cid;
       remapped[role+'_uf']     = ent.campos.uf;
     }
+
+    // Verifica pendências
+    const faltando = verificarFaltando(ent);
+    if (faltando.length > 0) pendencias.push({ nome: ent.nome, campos: faltando });
   });
 
   // Preenche os campos do form
@@ -953,7 +1050,60 @@ function gerarDocsFromReview() {
     }
   });
 
+  // Se tem pendências, mostra tela de pendências antes de gerar
+  if (pendencias.length > 0) {
+    mostrarPendencias(pendencias);
+  } else {
+    gerarDocumentos();
+  }
+}
+
+function mostrarPendencias(pendencias) {
+  const container = document.getElementById('pend-cards');
+  container.innerHTML = '';
+
+  const sub = document.getElementById('pend-sub');
+  sub.textContent = pendencias.length + ' pessoa(s) com dados incompletos. Os PDFs foram gerados com os dados disponíveis.';
+
+  pendencias.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'pend-card';
+    div.innerHTML = `
+      <div class="pend-card-nome">👤 ${p.nome}</div>
+      <div class="pend-tags">${p.campos.map(c => `<span class="pend-tag">${c}</span>`).join('')}</div>
+    `;
+    container.appendChild(div);
+  });
+
+  document.getElementById('pend-msg-texto').textContent = montarMensagem(pendencias);
+  irTela('tela-pendencias');
   gerarDocumentos();
+}
+
+function montarMensagem(pendencias) {
+  const linhas = pendencias.map(p => {
+    const itens = p.campos.map(c => '    • ' + c).join('\n');
+    return p.nome + ':\n' + itens;
+  }).join('\n\n');
+  return 'Olá! Para concluir o cadastro, precisamos dos seguintes dados:\n\n' + linhas + '\n\nAssim que puder, por favor nos envie. Obrigado!';
+}
+
+function copiarMensagem() {
+  const texto = document.getElementById('pend-msg-texto').textContent;
+  const btn = document.getElementById('btn-copiar');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(texto).then(() => {
+      btn.textContent = '✅ Copiado!'; btn.classList.add('copiado');
+      setTimeout(() => { btn.textContent = '📋 Copiar mensagem'; btn.classList.remove('copiado'); }, 2500);
+    });
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = texto; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => { btn.textContent = '📋 Copiar mensagem'; }, 2500);
+  }
 }
 
 function preencherFormulario(dados) {
