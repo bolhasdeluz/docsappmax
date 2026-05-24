@@ -201,31 +201,23 @@
     .btn-text { background: #1e40af; color: white; flex: 1; justify-content: center; }
     .btn-text:hover { background: #1d4ed8; }
 
-    /* FORMAT MODAL */
-    #format-modal {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(26,22,37,0.6); z-index: 9998;
-      display: none; justify-content: center; align-items: center;
+    /* FORMAT BAR */
+    .format-bar {
+      display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;
     }
-    #format-modal.visible { display: flex; }
-    .format-box {
-      background: white; border-radius: 14px; padding: 28px 32px;
-      text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.2);
-      max-width: 380px; width: 90%;
+    .format-btn {
+      flex: 1; min-width: 120px; padding: 11px 16px;
+      border-radius: 8px; border: 2px solid var(--border);
+      background: white; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      gap: 7px; transition: all 0.15s;
     }
-    .format-box h3 { color: var(--purple); margin-bottom: 6px; font-size: 18px; }
-    .format-box p { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
-    .format-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .format-opt {
-      border: 2px solid var(--border); border-radius: 10px; padding: 18px 12px;
-      cursor: pointer; transition: all 0.15s; background: white;
-    }
-    .format-opt:hover { border-color: var(--purple); background: var(--purple-dim); }
-    .format-opt-icon { font-size: 28px; margin-bottom: 8px; }
-    .format-opt-label { font-size: 13px; font-weight: 600; color: var(--text); }
-    .format-opt-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
-    .format-cancel { margin-top: 14px; font-size: 12px; color: var(--muted); cursor: pointer; }
-    .format-cancel:hover { color: var(--text); }
+    .format-btn:hover { border-color: var(--purple); background: var(--purple-dim); color: var(--purple); }
+    .format-btn.pdf { background: var(--green); color: white; border-color: var(--green); }
+    .format-btn.pdf:hover { background: #165c38; border-color: #165c38; }
+    .format-btn.word { background: #1e40af; color: white; border-color: #1e40af; }
+    .format-btn.word:hover { background: #1d4ed8; border-color: #1d4ed8; }
     .btn-back { background: transparent; border: 1px solid var(--border); color: var(--muted); }
     .btn-back:hover { border-color: var(--purple); color: var(--purple); }
 
@@ -622,8 +614,9 @@
       </div>
     </div>
 
-    <div class="btn-row" style="margin-top: 20px;">
-      <button class="btn btn-generate" onclick="abrirFormatModal('review')">📥 Gerar documentos</button>
+    <div class="format-bar" style="margin-top:16px;">
+      <button class="format-btn pdf" onclick="confirmarFormato('pdf','review')">📄 Baixar PDF</button>
+      <button class="format-btn word" onclick="confirmarFormato('docx','review')">📝 Baixar Word</button>
     </div>
   </div>
 
@@ -641,7 +634,10 @@
       </div>
     </div>
     <div class="btn-row" style="margin-top:16px;">
-      <button class="btn btn-generate" onclick="abrirFormatModal('pendencias')">📥 Gerar mesmo assim</button>
+      <div class="format-bar">
+        <button class="format-btn pdf" onclick="confirmarFormato('pdf','pendencias')">📄 Baixar PDF mesmo assim</button>
+        <button class="format-btn word" onclick="confirmarFormato('docx','pendencias')">📝 Baixar Word mesmo assim</button>
+      </div>
     </div>
   </div>
 
@@ -830,33 +826,16 @@
       </div>
     </div>
 
-    <div class="btn-row" style="margin-top: 20px;">
-      <button class="btn btn-generate" onclick="abrirFormatModal('form')">📥 Gerar documentos</button>
+    <div class="format-bar" style="margin-top:16px;">
+      <button class="format-btn pdf" onclick="confirmarFormato('pdf','form')">📄 Baixar PDF</button>
+      <button class="format-btn word" onclick="confirmarFormato('docx','form')">📝 Baixar Word</button>
     </div>
   </div>
 
 </div><!-- /page -->
 
 <!-- FORMAT MODAL -->
-<div id="format-modal">
-  <div class="format-box">
-    <h3>Formato de download</h3>
-    <p>Escolha como deseja salvar o documento</p>
-    <div class="format-options">
-      <div class="format-opt" onclick="confirmarFormato('pdf')">
-        <div class="format-opt-icon">📄</div>
-        <div class="format-opt-label">PDF</div>
-        <div class="format-opt-sub">Pronto para assinar</div>
-      </div>
-      <div class="format-opt" onclick="confirmarFormato('docx')">
-        <div class="format-opt-icon">📝</div>
-        <div class="format-opt-label">Word (.doc)</div>
-        <div class="format-opt-sub">Para editar antes</div>
-      </div>
-    </div>
-    <div class="format-cancel" onclick="fecharFormatModal()">Cancelar</div>
-  </div>
-</div>
+<!-- format modal removed -->
 
 <script>
 // ============================================================
@@ -1796,20 +1775,9 @@ function dataExtenso() {
 let formatPendingAction = null;
 let formatoAtual = 'pdf'; // 'pdf' or 'txt'
 
-function abrirFormatModal(acao) {
-  formatPendingAction = acao;
-  document.getElementById('format-modal').classList.add('visible');
-}
-
-function fecharFormatModal() {
-  document.getElementById('format-modal').classList.remove('visible');
-  formatPendingAction = null;
-}
-
-function confirmarFormato(formato) {
+function confirmarFormato(formato, acao) {
   formatoAtual = formato;
-  fecharFormatModal();
-  if (formatPendingAction === 'review') gerarDocsFromReview();
+  if (acao === 'review') gerarDocsFromReview();
   else gerarDocumentos();
 }
 
@@ -2011,7 +1979,7 @@ function gerarDocx(tipo) {
     html += `<br>${p('O representante legal declara que as informações fornecidas são verídicas e atualizadas, assumindo plena responsabilidade pela veracidade das mesmas.')}`;
     html += `<br>${p(`Local e Data: ${gR('cid','r_cid')}/${gR('uf','r_uf')}, ${dataExtenso()}`)}`;
     html += `<p class="sig">Assinatura do Representante Legal: ${gR('nome','r_nome')}<br><br>___________________________________________________</p>`;
-    baixarDoc(html, `TERMO_MENOR_${(gM('nome','m_nome')||'doc').replace(/[^A-Z0-9]/g,'_')}.doc`);
+    baixarDoc(html, `TERMO_MENOR_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.doc`);
     return;
   }
 
@@ -2049,7 +2017,7 @@ function gerarDocx(tipo) {
     html += p('O AUTORIZANTE isenta a APPMAX de qualquer responsabilidade por eventuais disputas societárias, fiscais, tributárias ou de qualquer natureza, relacionadas à destinação dos valores pagos neste termo.');
     html += p('Este termo tem caráter excepcional e não gera obrigação futura da APPMAX em realizar depósitos fora das regras do arranjo de pagamento vigente, nem constitui novação contratual. E por estarem de pleno acordo, firmam o presente termo no formato digital.');
     html += `<br>${p(`${cidade}/${uf}, ${dataExtenso()}`)}`;
-    baixarDoc(html, `TERMO_SAQUE_${(razao||'doc').replace(/[^A-Z0-9]/g,'_')}.doc`);
+    baixarDoc(html, `TERMO_SAQUE_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.doc`);
     return;
   }
 
@@ -2114,7 +2082,7 @@ function gerarDocx(tipo) {
   html += '</body></html>';
   const nome = isPF ? v('p1_nome') : v('pj_nome');
   const pref = isProc ? 'PROCURACAO' : 'TERMO';
-  baixarDoc(html, `${pref}_${(nome||'doc').replace(/[^A-Z0-9]/g,'_')}.doc`);
+  baixarDoc(html, `${pref}_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.doc`);
 }
 
 function baixarDoc(html, filename) {
@@ -2128,6 +2096,18 @@ function baixarDoc(html, filename) {
   URL.revokeObjectURL(url);
 }
 
+
+function getNomePrincipal() {
+  if (entidadesExtraidas && entidadesExtraidas.length > 0) {
+    // Prefer empresa name, then first person
+    const pj = entidadesExtraidas.find(e => e.id === 'pj' || e.tipo === 'empresa');
+    if (pj && pj.campos && pj.campos.nome) return pj.campos.nome.toUpperCase();
+    const first = entidadesExtraidas[0];
+    if (first && first.campos && first.campos.nome) return first.campos.nome.toUpperCase();
+  }
+  // Fallback to form fields
+  return v('pj_nome') || v('p1_nome') || v('r_nome') || 'DOCUMENTO';
+}
 function gerarPDF(tipo) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -2222,7 +2202,7 @@ function gerarPDF(tipo) {
     txt(`Local e Data: ${rCid}/${rUf}, ${dataExtenso()}`, false, 'left');
     y += 15;
     assinatura('Assinatura do Representante Legal:', rNome);
-    doc.save(`TERMO_MENOR_${(mNome||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    doc.save(`TERMO_MENOR_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.pdf`);
     return;
   }
 
@@ -2291,7 +2271,7 @@ function gerarPDF(tipo) {
     txt('Este termo tem caráter excepcional e não gera obrigação futura da APPMAX em realizar depósitos fora das regras do arranjo de pagamento vigente, nem constitui novação contratual. E por estarem de pleno acordo, firmam o presente termo no formato digital.');
     y += 5;
     txt(`${cidade}/${uf}, ${dataExtenso()}`, false, 'left');
-    doc.save(`TERMO_SAQUE_${(razao||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    doc.save(`TERMO_SAQUE_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.pdf`);
     return;
   }
 
@@ -2307,7 +2287,7 @@ function gerarPDF(tipo) {
     txt('Dessa forma, ficam desde já cancelados todos os poderes anteriormente conferidos ao OUTORGADO, declarando-se extinta a relação de mandato a partir da presente data, não podendo o OUTORGADO praticar quaisquer atos em nome da OUTORGANTE.'); y += 5;
     txt(`Local e Data: ${v('p1_cid')}/${v('p1_uf')}, ${dataExtenso()}.`, false, 'left'); y += 15;
     assinatura('Assinatura do OUTORGANTE:', v('p1_nome'));
-    doc.save(`REVOGACAO_PF_${(v('p1_nome')||'doc').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    doc.save(`REVOGACAO_PF_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.pdf`);
     return;
   }
 
@@ -2337,7 +2317,7 @@ function gerarPDF(tipo) {
     assinatura('Assinatura do Outorgante:', v('p1_nome'));
     if (p2on) assinatura('Assinatura do Outorgante:', v('p2_nome'));
     if (p3on) assinatura('Assinatura do Outorgante:', v('p3_nome'));
-    doc.save(`REVOGACAO_PJ_${(v('pj_nome')||'doc').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    doc.save(`REVOGACAO_PJ_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.pdf`);
     return;
   }
 
@@ -2404,7 +2384,7 @@ function gerarPDF(tipo) {
 
   const nome = isPF ? v('p1_nome') : v('pj_nome');
   const prefixo = isProc ? 'PROCURACAO' : 'TERMO';
-  doc.save(`${prefixo}_${(nome||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+  doc.save(`${prefixo}_${getNomePrincipal().replace(/[^A-Z0-9]/g,'_')}.pdf`);
 }
 </script>
 </body>
