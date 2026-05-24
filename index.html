@@ -578,6 +578,31 @@
     <div class="screen-title">Dados encontrados</div>
     <div class="screen-sub">Defina o papel de cada pessoa no documento e clique em gerar</div>
     <div id="review-cards"></div>
+
+    <!-- SWAP MENOR — só aparece para MENOR -->
+    <div id="swap-menor-btn" class="hidden" style="margin-top:8px;">
+      <button onclick="swapMenorRep()" style="width:100%;padding:11px;background:#f0f2f5;border:2px dashed #b0aac4;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;">
+        🔄 Inverter Representante e Menor
+      </button>
+    </div>
+
+    <!-- BANKING SAQUE — só aparece para SAQUE -->
+    <div id="saque-banking-review" class="card hidden" style="margin-top:8px;">
+      <div style="font-weight:600;color:var(--purple);margin-bottom:16px;">💰 Valores e Dados Bancários</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+        <div class="field-inline"><label>Valor Principal (R$)</label><input id="sq_v1" type="text" oninput="maskMoedaInline(this,'sq_e1')" placeholder="R$ 0,00"></div>
+        <div class="field-inline"><label>Por Extenso</label><input id="sq_e1" type="text" readonly style="background:#f0fdf4;color:#166534;font-size:11px;"></div>
+        <div class="field-inline"><label>Valor Adicional (opcional)</label><input id="sq_v2" type="text" oninput="maskMoedaInline(this,'sq_e2')" placeholder="Opcional"></div>
+        <div class="field-inline"><label>Por Extenso</label><input id="sq_e2" type="text" readonly style="background:#f0fdf4;color:#166534;font-size:11px;"></div>
+        <div class="field-inline"><label>CPF Titular da Conta</label><input id="sq_cpfconta" type="text" oninput="maskCPF(this)" maxlength="14"></div>
+        <div class="field-inline"><label>Tipo de Conta</label><select id="sq_tipoconta" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:#fafaf9;"><option>CORRENTE</option><option>POUPANÇA</option></select></div>
+        <div class="field-inline"><label>Banco</label><input id="sq_banco2" type="text"></div>
+        <div class="field-inline"><label>Agência</label><input id="sq_agencia2" type="text"></div>
+        <div class="field-inline"><label>Conta</label><input id="sq_conta2" type="text"></div>
+        <div class="field-inline" style="grid-column:1/-1"><label>Chave PIX</label><input id="sq_pix2" type="text"></div>
+      </div>
+    </div>
+
     <div class="btn-row" style="margin-top: 20px;">
       <button class="btn btn-generate" onclick="abrirFormatModal('review')">📥 Gerar documentos</button>
     </div>
@@ -804,9 +829,9 @@
         <div class="format-opt-label">PDF</div>
         <div class="format-opt-sub">Pronto para assinar</div>
       </div>
-      <div class="format-opt" onclick="confirmarFormato('txt')">
+      <div class="format-opt" onclick="confirmarFormato('docx')">
         <div class="format-opt-icon">📝</div>
-        <div class="format-opt-label">Texto (.txt)</div>
+        <div class="format-opt-label">Word (.doc)</div>
         <div class="format-opt-sub">Para editar antes</div>
       </div>
     </div>
@@ -844,6 +869,13 @@ function irTela(id) {
   if (el) el.classList.add('active');
   telaAtual = id;
   document.getElementById('btn-voltar').classList.toggle('visible', telaHistorico.length > 0);
+  // Show/hide review extras
+  if (id === 'tela-review') {
+    const swapBtn = document.getElementById('swap-menor-btn');
+    const bankingDiv = document.getElementById('saque-banking-review');
+    if (swapBtn) swapBtn.classList.toggle('hidden', docAtual !== 'MENOR');
+    if (bankingDiv) bankingDiv.classList.toggle('hidden', docAtual !== 'SAQUE');
+  }
   window.scrollTo(0, 0);
 }
 
@@ -1699,6 +1731,51 @@ function confirmarFormato(formato) {
   else gerarDocumentos();
 }
 
+// maskMoeda for inline banking fields in review screen
+function maskMoedaInline(input, extensoId) {
+  let v2 = input.value.replace(/\D/g,'');
+  const extEl = document.getElementById(extensoId);
+  if (!v2) { input.value = ''; if (extEl) extEl.value = ''; return; }
+  const num = parseInt(v2) / 100;
+  input.value = num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  if (extEl) extEl.value = numeroExtenso(num).toUpperCase();
+}
+
+// Swap representante <-> menor
+function swapMenorRep() {
+  const rep = entidadesExtraidas.find(e => e.id === 'rep');
+  const men = entidadesExtraidas.find(e => e.id === 'men');
+  if (!rep || !men) return;
+
+  // Swap campos
+  const tmpCampos = {...rep.campos};
+  rep.campos = {...men.campos};
+  men.campos = {...tmpCampos};
+
+  const tmpNome = rep.nome; rep.nome = men.nome; men.nome = tmpNome;
+  const tmpDoc = rep.doc; rep.doc = men.doc; men.doc = tmpDoc;
+
+  // Re-render cards
+  const repCard = document.getElementById('ecard_rep');
+  const menCard = document.getElementById('ecard_men');
+  if (repCard) {
+    repCard.querySelector('.entity-card-name').textContent = rep.nome;
+    repCard.querySelector('.entity-card-doc').textContent = rep.doc;
+    Object.keys(rep.campos).forEach(k => {
+      const el = document.getElementById('field_rep_' + k);
+      if (el) el.value = rep.campos[k] || '';
+    });
+  }
+  if (menCard) {
+    menCard.querySelector('.entity-card-name').textContent = men.nome;
+    menCard.querySelector('.entity-card-doc').textContent = men.doc;
+    Object.keys(men.campos).forEach(k => {
+      const el = document.getElementById('field_men_' + k);
+      if (el) el.value = men.campos[k] || '';
+    });
+  }
+}
+
 // ============================================================
 // GERAÇÃO DE TEXTO
 // ============================================================
@@ -1903,12 +1980,19 @@ function baixarTxt(texto, filename) {
   URL.revokeObjectURL(url);
 }
 
+// Helper: read banking from review screen fields (sq_v1 etc) or fallback to form fields
+function sqV(reviewId, formId) {
+  const r = document.getElementById(reviewId);
+  if (r && r.value) return r.value.toUpperCase ? r.value.toUpperCase() : r.value;
+  return v(formId);
+}
+
 function gerarDocumentos() {
-  if (formatoAtual === 'txt') {
-    if (docAtual === 'MENOR') { gerarTexto('MENOR'); return; }
-    if (docAtual === 'SAQUE') { gerarTexto('SAQUE'); return; }
-    if (docAtual === 'PJ') { gerarTexto('PROC_PJ'); setTimeout(() => gerarTexto('TERMO_PJ'), 400); }
-    if (docAtual === 'PF') { gerarTexto('PROC_PF'); setTimeout(() => gerarTexto('TERMO_PF'), 400); }
+  if (formatoAtual === 'docx') {
+    if (docAtual === 'MENOR') { gerarDocx('MENOR'); return; }
+    if (docAtual === 'SAQUE') { gerarDocx('SAQUE'); return; }
+    if (docAtual === 'PJ') { gerarDocx('PROC_PJ'); setTimeout(() => gerarDocx('TERMO_PJ'), 400); }
+    if (docAtual === 'PF') { gerarDocx('PROC_PF'); setTimeout(() => gerarDocx('TERMO_PF'), 400); }
     return;
   }
   if (typeof window.jspdf === 'undefined') { alert('jsPDF não carregou. Verifique a conexão.'); return; }
@@ -1916,6 +2000,183 @@ function gerarDocumentos() {
   if (docAtual === 'SAQUE') { gerarPDF('SAQUE'); return; }
   if (docAtual === 'PJ') { gerarPDF('PROC_PJ'); setTimeout(() => gerarPDF('TERMO_PJ'), 600); }
   if (docAtual === 'PF') { gerarPDF('PROC_PF'); setTimeout(() => gerarPDF('TERMO_PF'), 600); }
+}
+
+// ============================================================
+// DOCX GENERATION (HTML-as-Word)
+// ============================================================
+function gerarDocx(tipo) {
+  const isPF = tipo.includes('PF');
+  const isProc = tipo.includes('PROC');
+
+  const pjEnt  = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'pj')  : null;
+  const repEnt = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'rep') : null;
+
+  const g = (ent, key, fb) => {
+    const cardEl = ent ? document.getElementById('field_' + ent.id + '_' + key) : null;
+    if (cardEl && cardEl.value) return cardEl.value.toUpperCase();
+    if (ent && ent.campos && ent.campos[key]) return ent.campos[key].toString().toUpperCase();
+    return v(fb);
+  };
+
+  const p2on = document.getElementById('toggle_p2')?.checked;
+  const p3on = document.getElementById('toggle_p3')?.checked;
+  const s2on = document.getElementById('toggle_s2')?.checked;
+  const s3on = document.getElementById('toggle_s3')?.checked;
+
+  let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' 
+    xmlns:w='urn:schemas-microsoft-com:office:word' 
+    xmlns='http://www.w3.org/TR/REC-html40'>
+  <head><meta charset='utf-8'><style>
+    body { font-family: Arial, sans-serif; font-size: 11pt; margin: 2cm; }
+    h1 { font-size: 13pt; text-align: center; margin-bottom: 20px; }
+    b { font-weight: bold; }
+    p { margin: 6px 0; }
+    .section { margin-top: 14px; }
+    .sig { margin-top: 40px; }
+  </style></head><body>`;
+
+  const p = (txt) => `<p>${txt || ''}</p>`;
+  const b = (txt) => `<b>${txt}</b>`;
+  const br = '<br>';
+
+  if (tipo === 'MENOR') {
+    const rep = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'rep') : null;
+    const men = entidadesExtraidas ? entidadesExtraidas.find(e => e.id === 'men') : null;
+    const gR = (k,fb) => g(rep,k,fb); const gM = (k,fb) => g(men,k,fb);
+    const cR = gR('comp','r_comp'); const cM = gM('comp','m_comp');
+    html += `<h1>TERMO DE AUTORIZAÇÃO E RESPONSABILIDADE</h1>`;
+    html += `<p>${b('REPRESENTANTE LEGAL:')}</p>`;
+    html += p(`Nome: ${gR('nome','r_nome')}`);
+    html += p(`Documento de Identificação (CPF): ${gR('cpf','r_cpf')}`);
+    html += p(`Endereço: ${gR('rua','r_rua')}, ${gR('num','r_num')}${cR?', '+cR:''}, ${gR('bairro','r_bairro')} - ${gR('cid','r_cid')}/${gR('uf','r_uf')} - ${gR('cep','r_cep')}`);
+    html += `<br><p>${b('MENOR AUTORIZADO:')}</p>`;
+    html += p(`Nome: ${gM('nome','m_nome')}`);
+    html += p(`Documento de Identificação (CPF): ${gM('cpf','m_cpf')}`);
+    html += p(`Endereço: ${gM('rua','m_rua')}, ${gM('num','m_num')}${cM?', '+cM:''}, ${gM('bairro','m_bairro')} - ${gM('cid','m_cid')}/${gM('uf','m_uf')} - ${gM('cep','m_cep')}`);
+    html += `<br>${p('Este termo tem como objeto a autorização, desde o momento do credenciamento na Plataforma Appmax e por tempo indeterminado, pelo representante legal acima qualificado, para que o menor utilize a Plataforma, reconhecendo as diretrizes estabelecidas nos Termos de Uso e Política de Privacidade da Appmax, disponíveis no site oficial da Appmax https://appmax.com.br')}`;
+    html += p('O representante legal, ao assinar este termo, se compromete a:');
+    html += p('a) Supervisionar o uso da Plataforma Appmax (CNPJ nº 27.000.511/0001-60) pelo menor, orientando-o sobre as diretrizes de segurança e bom uso do ambiente digital.');
+    html += p('b) Assumir integral responsabilidade por quaisquer ações realizadas pelo menor na plataforma, inclusive eventuais infrações aos Termos de Uso, inclusive por eventuais débitos que possam vir a surgir, em decorrência de chargebacks e estornos.');
+    html += p('c) Arcar com eventuais danos ou prejuízos decorrentes do uso da plataforma pelo menor, isentando a Appmax de qualquer responsabilidade nesses casos.');
+    html += `<br>${p('O representante legal declara que as informações fornecidas são verídicas e atualizadas, assumindo plena responsabilidade pela veracidade das mesmas.')}`;
+    html += `<br>${p(`Local e Data: ${gR('cid','r_cid')}/${gR('uf','r_uf')}, ${dataExtenso()}`)}`;
+    html += `<p class="sig">Assinatura do Representante Legal: ${gR('nome','r_nome')}<br><br>___________________________________________________</p>`;
+    baixarDoc(html, `TERMO_MENOR_${(gM('nome','m_nome')||'doc').replace(/[^A-Z0-9]/g,'_')}.doc`);
+    return;
+  }
+
+  if (tipo === 'SAQUE') {
+    const razao = g(pjEnt,'nome','pj_nome'), cnpj = g(pjEnt,'cnpj','pj_cnpj');
+    const rua = g(pjEnt,'rua','pj_rua'), num = g(pjEnt,'num','pj_num');
+    const compPJ = g(pjEnt,'comp','pj_comp'), bairro = g(pjEnt,'bairro','pj_bairro');
+    const cidade = g(pjEnt,'cid','pj_cid'), uf = g(pjEnt,'uf','pj_uf'), cep = g(pjEnt,'cep','pj_cep');
+    const repNome = g(repEnt,'nome','p1_nome'), repCpf = g(repEnt,'cpf','p1_cpf');
+    const compStr = compPJ && compPJ !== '-' ? ' - ' + compPJ : '';
+    const valor1 = sqV('sq_v1','sq_valor1'), ext1 = sqV('sq_e1','sq_extenso1');
+    const valor2 = sqV('sq_v2','sq_valor2'), ext2 = sqV('sq_e2','sq_extenso2');
+    const v2str = valor2 ? ` E ${valor2} (${ext2})` : '';
+
+    html += `<h1>TERMO DE AUTORIZAÇÃO E QUITAÇÃO</h1>`;
+    html += `<p>${b('AUTORIZANTE:')}</p>`;
+    html += p(`Razão Social: ${razao}`);
+    html += p(`CNPJ: ${cnpj}`);
+    html += p(`Endereço: ${rua}, ${num}${compStr}, ${bairro} - ${cidade}/${uf} - CEP ${cep}`);
+    html += p(`Representante legal: ${repNome}, portador do CPF n.º ${repCpf}`);
+    html += `<br><p>${b('Considerando que:')}</p>`;
+    html += p('- O Autorizante era credenciado na Plataforma APPMAX de propriedade da APPMAX PLATAFORMA DE PAGAMENTOS LTDA., CNPJ nº 27.000.511/0001-60, com sede na Travessa São José, nº 455, sala 74, Navegantes, Porto Alegre–RS, CEP 90240-200, para a intermediação de transações de pagamento;');
+    html += p('- O CNPJ do Autorizante encontra-se atualmente baixado perante a Receita Federal do Brasil, impossibilitando o recebimento de valores em sua conta bancária anteriormente vinculada;');
+    html += p('- Por obrigação regulatória, a APPMAX deve realizar os repasses financeiros exclusivamente para o domicílio bancário do beneficiário final das transações realizadas;');
+    html += p('- Em razão da inatividade da conta-corrente vinculada ao CNPJ, faz-se necessária uma alternativa segura para efetivar o pagamento dos valores devidos;');
+    html += `<br>${p(`O autorizante autoriza expressamente que a APPMAX realize o depósito para saque ${valor1} (${ext1})${v2str} referente às transações realizadas pela empresa anteriormente à sua baixa, na seguinte conta de titularidade do seu representante legal:`)}`;
+    html += p(`- CPF do titular da conta indicada (sócio principal) CPF: ${sqV('sq_cpfconta','sq_cpf_conta')}`);
+    html += p(`- Tipo de conta (corrente ou poupança): ${sqV('sq_tipoconta','sq_tipo_conta')}`);
+    html += p(`- Banco: ${sqV('sq_banco2','sq_banco')}`);
+    html += p(`- Agência: ${sqV('sq_agencia2','sq_agencia')}`);
+    html += p(`- Conta: ${sqV('sq_conta2','sq_conta')}`);
+    html += p(`- Chave PIX: ${sqV('sq_pix2','sq_pix')}`);
+    html += `<br>${p('O AUTORIZANTE declara estar ciente dos Termos de Uso da APPMAX (https://appmax.com.br/termos-de-uso) e que o seu representante legal é o mesmo do período em que as transações ocorreram e que os valores ora pagos são devidos à referida pessoa jurídica.')}`;
+    html += p('Ao receber os valores acima especificados, o AUTORIZANTE dá plena, geral e irrevogável quitação à APPMAX, nada mais tendo a reclamar, judicial ou extrajudicialmente, a esse título.');
+    html += p('O AUTORIZANTE isenta a APPMAX de qualquer responsabilidade por eventuais disputas societárias, fiscais, tributárias ou de qualquer natureza, relacionadas à destinação dos valores pagos neste termo.');
+    html += p('Este termo tem caráter excepcional e não gera obrigação futura da APPMAX em realizar depósitos fora das regras do arranjo de pagamento vigente, nem constitui novação contratual. E por estarem de pleno acordo, firmam o presente termo no formato digital.');
+    html += `<br>${p(`${cidade}/${uf}, ${dataExtenso()}`)}`;
+    baixarDoc(html, `TERMO_SAQUE_${(razao||'doc').replace(/[^A-Z0-9]/g,'_')}.doc`);
+    return;
+  }
+
+  // PJ / PF
+  const titulo = isProc ? 'PROCURAÇÃO PARTICULAR' : 'TERMO DE RESPONSABILIDADE';
+  html += `<h1>${titulo}</h1>`;
+  html += `<p>${b(isProc ? 'OUTORGANTE:' : 'PARCEIRO:')}</p>`;
+
+  if (isPF) {
+    html += p(`Nome: ${v('p1_nome')}`);
+    html += p(`Nacionalidade: ${v('p1_nac')}`);
+    html += p(`CPF: ${v('p1_cpf')}`);
+    html += p(`Endereço: ${v('p1_rua')}, ${v('p1_num')}${v('p1_comp')?` / ${v('p1_comp')}`:''}, ${v('p1_bairro')} - ${v('p1_cid')}/${v('p1_uf')} - CEP ${v('p1_cep')}`);
+  } else {
+    html += p(`Razão Social: ${v('pj_nome')}`);
+    html += p(`CNPJ: ${v('pj_cnpj')}`);
+    html += p(`Endereço: ${v('pj_rua')}, ${v('pj_num')}${v('pj_comp')?` / ${v('pj_comp')}`:''}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}`);
+    let rep = `Representada neste ato por ${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}`;
+    if (p2on) rep += `, ${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}`;
+    if (p3on) rep += ` e ${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}`;
+    html += p(rep + '.');
+  }
+
+  html += `<br><p>${b(isProc ? 'OUTORGADO:' : 'TERCEIRO OPERADOR:')}</p>`;
+  const addSocioDoc = (pre) => {
+    if (!v(pre+'_nome')) return;
+    html += p(`Nome: ${v(pre+'_nome')}`);
+    html += p(`Nacionalidade: ${v(pre+'_nac')}`);
+    html += p(`CPF: ${v(pre+'_cpf')}`);
+    html += p(`Endereço: ${v(pre+'_rua')}, ${v(pre+'_num')}${v(pre+'_comp')?` / ${v(pre+'_comp')}`:''}, ${v(pre+'_bairro')} - ${v(pre+'_cid')}/${v(pre+'_uf')} - CEP ${v(pre+'_cep')}`);
+    html += '<br>';
+  };
+  addSocioDoc('s1');
+  if (s2on) addSocioDoc('s2');
+  if (s3on) addSocioDoc('s3');
+
+  if (isProc) {
+    html += `<p>${b('PODERES:')}</p>`;
+    html += p('Pelo presente instrumento particular de mandato, a OUTORGANTE, através de seu representante legal, nomeia e constitui como seu legítimo representante o OUTORGADO, conferindo-lhe poderes para: Acessar, gerir, administrar e realizar todos os negócios que sejam de interesse da Outorgante, relacionados à Plataforma Appmax (CNPJ nº 27.000.511/0001-60), incluindo a realização de saques; Representar a Outorgante em todos os atos em que seja necessária sua presença ou intervenção como negociante; Requerer e defender os direitos e interesses da Outorgante perante terceiros; Assumir responsabilidades perante terceiros, na forma do art. 1.022 do Código Civil; Praticar todos os atos indispensáveis ao desempenho deste mandato, utilizando os poderes necessários em Direito permitidos. O presente mandato é concedido por prazo indeterminado, podendo ser revogado a qualquer momento pela Outorgante mediante comunicação formal, com a devida ciência a terceiros interessados.');
+  } else {
+    html += p('Este Termo de Responsabilidade tem por objeto a utilização da plataforma Appmax (CNPJ nº 27.000.511/0001-60) pelo Terceiro Operador acima identificado, em nome do Parceiro, conforme as diretrizes estabelecidas nos Termos de Uso e Política de Privacidade da Appmax, disponíveis no site oficial https://appmax.com.br');
+    html += p('O Terceiro Operador declara que leu, compreendeu e concorda integralmente com os Termos de Uso e a Política de Privacidade da Appmax, comprometendo-se a respeitá-los durante toda a operação da plataforma.');
+    html += p('Em caso de desligamento ou substituição do Terceiro Operador, o Parceiro compromete-se a notificar a Appmax imediatamente, fornecendo as devidas revogações e/ou novas autorizações, além de proceder à alteração de login e senha para evitar acessos indevidos.');
+    html += p('Este Termo de Responsabilidade entra em vigor na data de sua assinatura e permanecerá válido enquanto o Parceiro tiver acesso autorizado à Plataforma Appmax, ou até que seja formalmente revogado pelo Parceiro.');
+  }
+
+  const loc = isPF ? `${v('p1_cid')}/${v('p1_uf')}` : `${v('pj_cid')}/${v('pj_uf')}`;
+  html += `<br>${p(`Local e Data: ${loc}, ${dataExtenso()}.`)}`;
+
+  const lblAs = isProc ? 'Assinatura do Outorgante:' : 'Assinatura do PARCEIRO:';
+  html += `<div class="sig">${p(`${lblAs} ${v('p1_nome')}<br><br>___________________________________________________`)}</div>`;
+  if (!isPF && p2on) html += `<div class="sig">${p(`${lblAs} ${v('p2_nome')}<br><br>___________________________________________________`)}</div>`;
+  if (!isPF && p3on) html += `<div class="sig">${p(`${lblAs} ${v('p3_nome')}<br><br>___________________________________________________`)}</div>`;
+
+  if (!isProc || isPF) {
+    const lblS = isProc ? 'Assinatura do OUTORGADO:' : 'Assinatura do TERCEIRO OPERADOR:';
+    html += `<div class="sig">${p(`${lblS} ${v('s1_nome')}<br><br>___________________________________________________`)}</div>`;
+    if (s2on) html += `<div class="sig">${p(`${lblS} ${v('s2_nome')}<br><br>___________________________________________________`)}</div>`;
+    if (s3on) html += `<div class="sig">${p(`${lblS} ${v('s3_nome')}<br><br>___________________________________________________`)}</div>`;
+  }
+
+  html += '</body></html>';
+  const nome = isPF ? v('p1_nome') : v('pj_nome');
+  const pref = isProc ? 'PROCURACAO' : 'TERMO';
+  baixarDoc(html, `${pref}_${(nome||'doc').replace(/[^A-Z0-9]/g,'_')}.doc`);
+}
+
+function baixarDoc(html, filename) {
+  const fullHtml = html + '</body></html>';
+  const blob = new Blob(['﻿' + fullHtml], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function gerarPDF(tipo) {
@@ -2042,10 +2303,10 @@ function gerarPDF(tipo) {
     const repCpf   = g(repEnt, 'cpf',    'p1_cpf');
 
     const compStr  = compPJ && compPJ !== '-' ? ' - ' + compPJ : '';
-    const valor1   = v('sq_valor1');
-    const extenso1 = v('sq_extenso1');
-    const valor2   = v('sq_valor2');
-    const extenso2 = v('sq_extenso2');
+    const valor1   = sqV('sq_v1','sq_valor1');
+    const extenso1 = sqV('sq_e1','sq_extenso1');
+    const valor2   = sqV('sq_v2','sq_valor2');
+    const extenso2 = sqV('sq_e2','sq_extenso2');
     const v2str    = valor2 ? ` E ${valor2} (${extenso2})` : '';
 
     doc.setFontSize(14); doc.setFont('helvetica','bold');
@@ -2067,12 +2328,12 @@ function gerarPDF(tipo) {
 
     txt(`O autorizante autoriza expressamente que a APPMAX realize o depósito para saque ${valor1} (${extenso1})${v2str} referente às transações realizadas pela empresa anteriormente à sua baixa, na seguinte conta de titularidade do seu representante legal:`);
     y += 3;
-    txt(`- CPF do titular da conta indicada (sócio principal) CPF: ${v('sq_cpf_conta')}`, false, 'left');
-    txt(`- Tipo de conta (corrente ou poupança): ${v('sq_tipo_conta')}`, false, 'left');
-    txt(`- Banco: ${v('sq_banco')}`, false, 'left');
-    txt(`- Agência: ${v('sq_agencia')}`, false, 'left');
-    txt(`- Conta: ${v('sq_conta')}`, false, 'left');
-    txt(`- Chave PIX: ${v('sq_pix')}`, false, 'left');
+    txt(`- CPF do titular da conta indicada (sócio principal) CPF: ${sqV('sq_cpfconta','sq_cpf_conta')}`, false, 'left');
+    txt(`- Tipo de conta (corrente ou poupança): ${sqV('sq_tipoconta','sq_tipo_conta')}`, false, 'left');
+    txt(`- Banco: ${sqV('sq_banco2','sq_banco')}`, false, 'left');
+    txt(`- Agência: ${sqV('sq_agencia2','sq_agencia')}`, false, 'left');
+    txt(`- Conta: ${sqV('sq_conta2','sq_conta')}`, false, 'left');
+    txt(`- Chave PIX: ${sqV('sq_pix2','sq_pix')}`, false, 'left');
     y += 4;
 
     txt('O AUTORIZANTE declara estar ciente dos Termos de Uso da APPMAX (https://appmax.com.br/termos-de-uso) e que o seu representante legal é o mesmo do período em que as transações ocorreram e que os valores ora pagos são devidos à referida pessoa jurídica.');
