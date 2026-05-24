@@ -530,6 +530,16 @@
         <div class="doc-card-name">Termo Saque</div>
         <div class="doc-card-desc">Autorização e quitação</div>
       </div>
+      <div class="doc-card" onclick="selecionarDoc('REVOG_PF')">
+        <div class="doc-card-icon">🚫</div>
+        <div class="doc-card-name">Revogação PF</div>
+        <div class="doc-card-desc">Revogar procuração PF</div>
+      </div>
+      <div class="doc-card" onclick="selecionarDoc('REVOG_PJ')">
+        <div class="doc-card-icon">🏚️</div>
+        <div class="doc-card-name">Revogação PJ</div>
+        <div class="doc-card-desc">Revogar procuração PJ</div>
+      </div>
     </div>
   </div>
 
@@ -578,6 +588,15 @@
     <div class="screen-title">Dados encontrados</div>
     <div class="screen-sub">Defina o papel de cada pessoa no documento e clique em gerar</div>
     <div id="review-cards"></div>
+
+    <!-- DATA ORIGINAL — só aparece para Revogação -->
+    <div id="data-original-bloco" class="card hidden" style="margin-top:8px;">
+      <div style="font-weight:600;color:var(--purple);margin-bottom:12px;">📅 Data da procuração original</div>
+      <div class="field-inline" style="max-width:260px;">
+        <label>Data em que a procuração foi assinada</label>
+        <input type="date" id="data_original_input" style="padding:9px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;">
+      </div>
+    </div>
 
     <!-- SWAP MENOR — só aparece para MENOR -->
     <div id="swap-menor-btn" class="hidden" style="margin-top:8px;">
@@ -873,8 +892,10 @@ function irTela(id) {
   if (id === 'tela-review') {
     const swapBtn = document.getElementById('swap-menor-btn');
     const bankingDiv = document.getElementById('saque-banking-review');
+    const dataOrigBloco = document.getElementById('data-original-bloco');
     if (swapBtn) swapBtn.classList.toggle('hidden', docAtual !== 'MENOR');
     if (bankingDiv) bankingDiv.classList.toggle('hidden', docAtual !== 'SAQUE');
+    if (dataOrigBloco) dataOrigBloco.classList.toggle('hidden', !docAtual.startsWith('REVOG'));
   }
   window.scrollTo(0, 0);
 }
@@ -1097,6 +1118,67 @@ function detectarEntidades(dados) {
         mesmoEnd: dados.men_mesmo_end || false
       }
     ];
+  }
+
+  // REVOG_PF — outorgante (p1) + outorgado (s1)
+  if (docAtual === 'REVOG_PF') {
+    return [
+      {
+        id: 'p1', tipo: 'pessoa', role: 'p1',
+        nome: dados.p1_nome || 'Outorgante',
+        doc: dados.p1_cpf ? 'CPF: ' + dados.p1_cpf : '',
+        campos: { nome: dados.p1_nome||'', cpf: dados.p1_cpf||'', nac: dados.p1_nac||'BRASILEIRO(A)',
+          cep: dados.p1_cep||'', rua: dados.p1_rua||'', num: dados.p1_num||'',
+          comp: dados.p1_comp||'', bairro: dados.p1_bairro||'', cid: dados.p1_cid||'', uf: dados.p1_uf||'' },
+        fixedLabel: '👤 Outorgante (Parceiro)', fixedRole: true
+      },
+      {
+        id: 's1', tipo: 'pessoa', role: 's1',
+        nome: dados.s1_nome || 'Outorgado',
+        doc: dados.s1_cpf ? 'CPF: ' + dados.s1_cpf : '',
+        campos: { nome: dados.s1_nome||'', cpf: dados.s1_cpf||'', nac: dados.s1_nac||'BRASILEIRO(A)',
+          cep: dados.s1_cep||'', rua: dados.s1_rua||'', num: dados.s1_num||'',
+          comp: dados.s1_comp||'', bairro: dados.s1_bairro||'', cid: dados.s1_cid||'', uf: dados.s1_uf||'' },
+        fixedLabel: '👤 Outorgado (Sócio)', fixedRole: true
+      }
+    ];
+  }
+
+  // REVOG_PJ — empresa + representantes + outorgados (sócios)
+  if (docAtual === 'REVOG_PJ') {
+    const ents = [];
+    if (dados.pj_nome) ents.push({
+      id: 'pj', tipo: 'empresa', role: 'pj',
+      nome: dados.pj_nome,
+      doc: dados.pj_cnpj ? 'CNPJ: ' + dados.pj_cnpj : '',
+      campos: { nome: dados.pj_nome||'', cnpj: dados.pj_cnpj||'', cep: dados.pj_cep||'',
+        rua: dados.pj_rua||'', num: dados.pj_num||'', comp: dados.pj_comp||'',
+        bairro: dados.pj_bairro||'', cid: dados.pj_cid||'', uf: dados.pj_uf||'' },
+      fixedLabel: '🏢 Empresa (Outorgante PJ)', fixedRole: true
+    });
+    ['p1','p2','p3'].forEach((pre, i) => {
+      if (dados[pre+'_nome']) ents.push({
+        id: pre, tipo: 'pessoa', role: pre,
+        nome: dados[pre+'_nome'],
+        doc: dados[pre+'_cpf'] ? 'CPF: ' + dados[pre+'_cpf'] : '',
+        campos: { nome: dados[pre+'_nome']||'', cpf: dados[pre+'_cpf']||'', nac: dados[pre+'_nac']||'BRASILEIRO(A)',
+          cep: dados[pre+'_cep']||'', rua: dados[pre+'_rua']||'', num: dados[pre+'_num']||'',
+          comp: dados[pre+'_comp']||'', bairro: dados[pre+'_bairro']||'', cid: dados[pre+'_cid']||'', uf: dados[pre+'_uf']||'' },
+        fixedLabel: `👤 Representante ${i > 0 ? i+1 : ''}`.trim(), fixedRole: true
+      });
+    });
+    ['s1','s2','s3'].forEach((pre, i) => {
+      if (dados[pre+'_nome']) ents.push({
+        id: pre, tipo: 'pessoa', role: pre,
+        nome: dados[pre+'_nome'],
+        doc: dados[pre+'_cpf'] ? 'CPF: ' + dados[pre+'_cpf'] : '',
+        campos: { nome: dados[pre+'_nome']||'', cpf: dados[pre+'_cpf']||'', nac: dados[pre+'_nac']||'BRASILEIRO(A)',
+          cep: dados[pre+'_cep']||'', rua: dados[pre+'_rua']||'', num: dados[pre+'_num']||'',
+          comp: dados[pre+'_comp']||'', bairro: dados[pre+'_bairro']||'', cid: dados[pre+'_cid']||'', uf: dados[pre+'_uf']||'' },
+        fixedLabel: `👤 Outorgado (Sócio ${i+1})`, fixedRole: true
+      });
+    });
+    return ents;
   }
 
   const ents = [];
@@ -1777,10 +1859,76 @@ function swapMenorRep() {
 }
 
 // ============================================================
+function syncFormFromCards() {
+  if (!entidadesExtraidas || !entidadesExtraidas.length) return;
+  entidadesExtraidas.forEach(ent => {
+    // Read any edits from expanded card fields back into ent.campos
+    const allKeys = ['nome','cnpj','cpf','nac','cep','rua','num','comp','bairro','cid','uf'];
+    allKeys.forEach(key => {
+      const cardEl = document.getElementById('field_' + ent.id + '_' + key);
+      if (cardEl && !cardEl.disabled && cardEl.value) ent.campos[key] = cardEl.value;
+    });
+
+    // Now write ent.campos into form fields based on role
+    const role = document.getElementById('role_' + ent.id)?.value || ent.role || ent.id;
+    const set = (formId, val) => {
+      const el = document.getElementById(formId);
+      if (el && val) el.value = val.toString().toUpperCase();
+    };
+
+    if (role === 'pj' || ent.id === 'pj') {
+      set('pj_nome',   ent.campos.nome);
+      set('pj_cnpj',   ent.campos.cnpj);
+      set('pj_cep',    ent.campos.cep);
+      set('pj_rua',    ent.campos.rua);
+      set('pj_num',    ent.campos.num);
+      set('pj_comp',   ent.campos.comp);
+      set('pj_bairro', ent.campos.bairro);
+      set('pj_cid',    ent.campos.cid);
+      set('pj_uf',     ent.campos.uf);
+    } else if (role === 'rep') {
+      // SAQUE/MENOR representante → p1
+      set('p1_nome', ent.campos.nome);
+      set('p1_cpf',  ent.campos.cpf);
+      set('p1_nac',  ent.campos.nac || 'BRASILEIRO(A)');
+    } else if (['p1','p2','p3','s1','s2','s3'].includes(role)) {
+      set(role+'_nome',   ent.campos.nome);
+      set(role+'_cpf',    ent.campos.cpf);
+      set(role+'_nac',    ent.campos.nac || 'BRASILEIRO(A)');
+      set(role+'_cep',    ent.campos.cep);
+      set(role+'_rua',    ent.campos.rua);
+      set(role+'_num',    ent.campos.num);
+      set(role+'_comp',   ent.campos.comp);
+      set(role+'_bairro', ent.campos.bairro);
+      set(role+'_cid',    ent.campos.cid);
+      set(role+'_uf',     ent.campos.uf);
+      // Activate toggle for optional sections
+      if (['p2','p3','s2','s3'].includes(role)) {
+        const toggle = document.getElementById('toggle_' + role);
+        if (toggle && !toggle.checked) { toggle.checked = true; toggleSecao(role, true); }
+      }
+    } else if (role === 'men') {
+      // MENOR menor → m_*
+      set('m_nome',   ent.campos.nome);
+      set('m_cpf',    ent.campos.cpf);
+      set('m_cep',    ent.campos.cep);
+      set('m_rua',    ent.campos.rua);
+      set('m_num',    ent.campos.num);
+      set('m_comp',   ent.campos.comp);
+      set('m_bairro', ent.campos.bairro);
+      set('m_cid',    ent.campos.cid);
+      set('m_uf',     ent.campos.uf);
+    }
+  });
+}
+
 function gerarDocumentos() {
+  syncFormFromCards(); // Always sync cards → form before generating
   if (formatoAtual === 'docx') {
     if (docAtual === 'MENOR') { gerarDocx('MENOR'); return; }
     if (docAtual === 'SAQUE') { gerarDocx('SAQUE'); return; }
+    if (docAtual === 'REVOG_PF') { gerarDocx('REVOG_PF'); return; }
+    if (docAtual === 'REVOG_PJ') { gerarDocx('REVOG_PJ'); return; }
     if (docAtual === 'PJ') { gerarDocx('PROC_PJ'); setTimeout(() => gerarDocx('TERMO_PJ'), 400); }
     if (docAtual === 'PF') { gerarDocx('PROC_PF'); setTimeout(() => gerarDocx('TERMO_PF'), 400); }
     return;
@@ -1788,9 +1936,20 @@ function gerarDocumentos() {
   if (typeof window.jspdf === 'undefined') { alert('jsPDF não carregou. Verifique a conexão.'); return; }
   if (docAtual === 'MENOR') { gerarPDF('MENOR'); return; }
   if (docAtual === 'SAQUE') { gerarPDF('SAQUE'); return; }
+  if (docAtual === 'REVOG_PF') { gerarPDF('REVOG_PF'); return; }
+  if (docAtual === 'REVOG_PJ') { gerarPDF('REVOG_PJ'); return; }
   if (docAtual === 'PJ') { gerarPDF('PROC_PJ'); setTimeout(() => gerarPDF('TERMO_PJ'), 600); }
   if (docAtual === 'PF') { gerarPDF('PROC_PF'); setTimeout(() => gerarPDF('TERMO_PF'), 600); }
 }
+
+function getDataOriginal() {
+  const el = document.getElementById('data_original_input');
+  if (!el || !el.value) return '___/___/______';
+  const [y,m,d] = el.value.split('-');
+  const meses = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+  return `${parseInt(d)} DE ${meses[parseInt(m)-1]} DE ${y}`;
+}
+
 
 // ============================================================
 // DOCX GENERATION (HTML-as-Word)
@@ -2133,6 +2292,52 @@ function gerarPDF(tipo) {
     y += 5;
     txt(`${cidade}/${uf}, ${dataExtenso()}`, false, 'left');
     doc.save(`TERMO_SAQUE_${(razao||'documento').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    return;
+  }
+
+  // ---- REVOGAÇÃO PF ----
+  if (tipo === 'REVOG_PF') {
+    doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text('TERMO DE REVOGAÇÃO E CANCELAMENTO DE PROCURAÇÃO PARTICULAR', 105, y, {align:'center'}); y += 15;
+    txt('OUTORGANTE:', true, 'left');
+    txt(`Nome: ${v('p1_nome')}\nNacionalidade: ${v('p1_nac')||'BRASILEIRO(A)'}\nCPF: ${v('p1_cpf')}\nEndereço: ${v('p1_rua')}, ${v('p1_num')}${comp('p1_comp')}, ${v('p1_bairro')} - ${v('p1_cid')}/${v('p1_uf')} - CEP ${v('p1_cep')}`, false, 'left'); y += 5;
+    txt('OUTORGADO:', true, 'left');
+    txt(`Nome: ${v('s1_nome')}\nNacionalidade: ${v('s1_nac')||'BRASILEIRO(A)'}\nCPF: ${v('s1_cpf')}\nEndereço: ${v('s1_rua')}, ${v('s1_num')}${comp('s1_comp')}, ${v('s1_bairro')} - ${v('s1_cid')}/${v('s1_uf')} - CEP ${v('s1_cep')}`, false, 'left'); y += 5;
+    txt(`Pelo presente instrumento, a OUTORGANTE, nos termos do art. 682 do Código Civil, vem formalmente revogar a procuração outorgada ao OUTORGADO, anteriormente conferida através do instrumento particular de mandato datado de ${getDataOriginal()}.`);
+    txt('Dessa forma, ficam desde já cancelados todos os poderes anteriormente conferidos ao OUTORGADO, declarando-se extinta a relação de mandato a partir da presente data, não podendo o OUTORGADO praticar quaisquer atos em nome da OUTORGANTE.'); y += 5;
+    txt(`Local e Data: ${v('p1_cid')}/${v('p1_uf')}, ${dataExtenso()}.`, false, 'left'); y += 15;
+    assinatura('Assinatura do OUTORGANTE:', v('p1_nome'));
+    doc.save(`REVOGACAO_PF_${(v('p1_nome')||'doc').replace(/[^A-Z0-9]/g,'_')}.pdf`);
+    return;
+  }
+
+  // ---- REVOGAÇÃO PJ ----
+  if (tipo === 'REVOG_PJ') {
+    const p2on = document.getElementById('toggle_p2')?.checked;
+    const p3on = document.getElementById('toggle_p3')?.checked;
+    const s2on = document.getElementById('toggle_s2')?.checked;
+    const s3on = document.getElementById('toggle_s3')?.checked;
+    doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text('TERMO DE REVOGAÇÃO E CANCELAMENTO DE PROCURAÇÃO PARTICULAR', 105, y, {align:'center'}); y += 15;
+    txt('OUTORGANTE:', true, 'left');
+    txt(`Razão Social: ${v('pj_nome')}\nCNPJ: ${v('pj_cnpj')}\nEndereço: ${v('pj_rua')}, ${v('pj_num')}${comp('pj_comp')}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}`, false, 'left'); y += 3;
+    let rep = `Representada neste ato por seu representante legal, ${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}`;
+    if (p2on) rep += `, ${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}`;
+    if (p3on) rep += ` e ${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}`;
+    txt(rep + '.'); y += 5;
+    txt('OUTORGADO:', true, 'left');
+    const addOut = (pre) => {
+      if (!v(pre+'_nome')) return;
+      txt(`Nome: ${v(pre+'_nome')}\nNacionalidade: ${v(pre+'_nac')||'BRASILEIRO(A)'}\nCPF: ${v(pre+'_cpf')}\nEndereço: ${v(pre+'_rua')}, ${v(pre+'_num')}${comp(pre+'_comp')}, ${v(pre+'_bairro')} - ${v(pre+'_cid')}/${v(pre+'_uf')} - CEP ${v(pre+'_cep')}`, false, 'left');
+    };
+    addOut('s1'); if (s2on) addOut('s2'); if (s3on) addOut('s3'); y += 5;
+    txt(`Pelo presente instrumento, a OUTORGANTE, nos termos do art. 682 do Código Civil, vem formalmente revogar a procuração outorgada ao OUTORGADO, anteriormente conferida através do instrumento particular de mandato datado de ${getDataOriginal()}.`);
+    txt('Dessa forma, ficam desde já cancelados todos os poderes anteriormente conferidos ao OUTORGADO, declarando-se extinta a relação de mandato a partir da presente data, não podendo o OUTORGADO praticar quaisquer atos em nome da OUTORGANTE.'); y += 5;
+    txt(`Local e Data: ${v('pj_cid')}/${v('pj_uf')}, ${dataExtenso()}.`, false, 'left'); y += 15;
+    assinatura('Assinatura do Outorgante:', v('p1_nome'));
+    if (p2on) assinatura('Assinatura do Outorgante:', v('p2_nome'));
+    if (p3on) assinatura('Assinatura do Outorgante:', v('p3_nome'));
+    doc.save(`REVOGACAO_PJ_${(v('pj_nome')||'doc').replace(/[^A-Z0-9]/g,'_')}.pdf`);
     return;
   }
 
