@@ -417,11 +417,22 @@
     <div class="card">
       <div class="section-label">Upload de PDF</div>
       <label class="upload-drop" for="file-pdf">
-        <input type="file" id="file-pdf" accept="application/pdf" onchange="onPdfSelecionado(this)">
+        <input type="file" id="file-pdf" accept="application/pdf" onchange="onPdfSelecionado(this, 'upload-label')">
         <div class="upload-drop-icon">📄</div>
-        <div class="upload-drop-text" id="upload-label">Clique para selecionar o PDF</div>
-        <div class="upload-drop-sub">Cartão CNPJ, contrato, ficha cadastral...</div>
+        <div class="upload-drop-text" id="upload-label">Clique para selecionar o PDF principal</div>
+        <div class="upload-drop-sub">Contrato social, ficha cadastral, dados dos sócios...</div>
       </label>
+
+      <!-- SEGUNDO PDF — só aparece para PJ -->
+      <div id="upload-qsa-container" class="hidden">
+        <div class="divider">+ documento da empresa</div>
+        <label class="upload-drop" for="file-qsa" style="border-color: #2e7d32; background: #f0faf4;">
+          <input type="file" id="file-qsa" accept="application/pdf" onchange="onPdfSelecionado(this, 'upload-qsa-label')">
+          <div class="upload-drop-icon">🏢</div>
+          <div class="upload-drop-text" id="upload-qsa-label" style="color: #2e7d32;">Clique para selecionar o Cartão CNPJ (QSA)</div>
+          <div class="upload-drop-sub">Comprovante da Receita Federal com dados da empresa</div>
+        </label>
+      </div>
 
       <div class="divider">ou cole o texto abaixo</div>
 
@@ -692,6 +703,9 @@ function selecionarDoc(tipo) {
   const labels = { PJ: 'Lote PJ — Procuração + Termo', PF: 'Lote PF — Procuração + Termo', MENOR: 'Termo de Menor', SAQUE: 'Termo de Saque' };
   document.getElementById('t2-titulo').textContent = labels[tipo] || tipo;
   configurarGrupos(tipo);
+  // Mostra segundo upload só para PJ
+  const qsaContainer = document.getElementById('upload-qsa-container');
+  if (qsaContainer) qsaContainer.classList.toggle('hidden', tipo !== 'PJ');
   irTela(2);
 }
 
@@ -721,9 +735,9 @@ function irParaFormulario() {
 // ============================================================
 // PDF UPLOAD
 // ============================================================
-function onPdfSelecionado(input) {
-  const lbl = document.getElementById('upload-label');
-  if (input.files[0]) {
+function onPdfSelecionado(input, labelId) {
+  const lbl = document.getElementById(labelId || 'upload-label');
+  if (input.files[0] && lbl) {
     lbl.innerHTML = `<span class="upload-success">✅ ${input.files[0].name}</span>`;
   }
 }
@@ -757,6 +771,7 @@ async function extrairTextoPDF(file) {
 // ============================================================
 async function extrairComIA() {
   const fileInput = document.getElementById('file-pdf');
+  const fileQSA = document.getElementById('file-qsa');
   const textoManual = document.getElementById('texto-manual').value.trim();
 
   if (!fileInput.files[0] && !textoManual) {
@@ -787,13 +802,20 @@ Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca in
     let textoFinal = textoManual;
     if (fileInput.files[0]) {
       textoFinal = await extrairTextoPDF(fileInput.files[0]);
-      if (!textoFinal.trim()) throw new Error('Não foi possível extrair texto do PDF.');
+      if (!textoFinal.trim()) throw new Error('Não foi possível extrair texto do PDF principal.');
     }
+
+    // Se houver segundo PDF (QSA), extrai e envia junto
+    let textoQSA = '';
+    if (fileQSA && fileQSA.files[0]) {
+      textoQSA = await extrairTextoPDF(fileQSA.files[0]);
+    }
+    const textoCompleto = textoFinal + (textoQSA ? '\n\n--- CARTÃO CNPJ / QSA ---\n\n' + textoQSA : '');
 
     const resp = await fetch('https://sparkling-grass-bb3d.bolhasdeluz.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texto: textoFinal })
+      body: JSON.stringify({ texto: textoCompleto })
     });
 
     if (!resp.ok) throw new Error(`Erro ${resp.status} no Worker`);
