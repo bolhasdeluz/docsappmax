@@ -584,7 +584,7 @@
       <div class="form-section-body">
         <div class="field full"><label>Razão Social</label><input id="pj_nome" type="text"></div>
         <div class="field"><label>CNPJ</label><input id="pj_cnpj" type="text" oninput="maskCNPJ(this)" maxlength="18"></div>
-        <div class="field"><label>CEP</label><input id="pj_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field"><label>CEP</label><input id="pj_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'pj')" maxlength="9"></div>
         <div class="field full"><label>Logradouro</label><input id="pj_rua" type="text"></div>
         <div class="field"><label>Número</label><input id="pj_num" type="text"></div>
         <div class="field"><label>Complemento</label><input id="pj_comp" type="text"></div>
@@ -601,7 +601,7 @@
         <div class="field full"><label>Nome Completo</label><input id="p1_nome" type="text"></div>
         <div class="field"><label>CPF</label><input id="p1_cpf" type="text" oninput="maskCPF(this)" maxlength="14"></div>
         <div class="field"><label>Nacionalidade</label><input id="p1_nac" type="text" value="BRASILEIRO(A)"></div>
-        <div class="field"><label>CEP</label><input id="p1_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field"><label>CEP</label><input id="p1_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'p1')" maxlength="9"></div>
         <div class="field full"><label>Logradouro</label><input id="p1_rua" type="text"></div>
         <div class="field"><label>Número</label><input id="p1_num" type="text"></div>
         <div class="field"><label>Complemento</label><input id="p1_comp" type="text"></div>
@@ -621,7 +621,7 @@
         <div class="field full"><label>Nome Completo</label><input id="p2_nome" type="text" disabled></div>
         <div class="field"><label>CPF</label><input id="p2_cpf" type="text" oninput="maskCPF(this)" maxlength="14" disabled></div>
         <div class="field"><label>Nacionalidade</label><input id="p2_nac" type="text" value="BRASILEIRO(A)" disabled></div>
-        <div class="field"><label>CEP</label><input id="p2_cep" type="text" oninput="maskCEP(this)" maxlength="9" disabled></div>
+        <div class="field"><label>CEP</label><input id="p2_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'p2')" maxlength="9" disabled></div>
         <div class="field full"><label>Logradouro</label><input id="p2_rua" type="text" disabled></div>
         <div class="field"><label>Número</label><input id="p2_num" type="text" disabled></div>
         <div class="field"><label>Complemento</label><input id="p2_comp" type="text" disabled></div>
@@ -641,7 +641,7 @@
         <div class="field full"><label>Nome Completo</label><input id="p3_nome" type="text" disabled></div>
         <div class="field"><label>CPF</label><input id="p3_cpf" type="text" oninput="maskCPF(this)" maxlength="14" disabled></div>
         <div class="field"><label>Nacionalidade</label><input id="p3_nac" type="text" value="BRASILEIRO(A)" disabled></div>
-        <div class="field"><label>CEP</label><input id="p3_cep" type="text" oninput="maskCEP(this)" maxlength="9" disabled></div>
+        <div class="field"><label>CEP</label><input id="p3_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'p3')" maxlength="9" disabled></div>
         <div class="field full"><label>Logradouro</label><input id="p3_rua" type="text" disabled></div>
         <div class="field"><label>Número</label><input id="p3_num" type="text" disabled></div>
         <div class="field"><label>Complemento</label><input id="p3_comp" type="text" disabled></div>
@@ -658,7 +658,7 @@
         <div class="field full"><label>Nome Completo</label><input id="s1_nome" type="text"></div>
         <div class="field"><label>CPF</label><input id="s1_cpf" type="text" oninput="maskCPF(this)" maxlength="14"></div>
         <div class="field"><label>Nacionalidade</label><input id="s1_nac" type="text" value="BRASILEIRO(A)"></div>
-        <div class="field"><label>CEP</label><input id="s1_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field"><label>CEP</label><input id="s1_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'s1')" maxlength="9"></div>
         <div class="field full"><label>Logradouro</label><input id="s1_rua" type="text"></div>
         <div class="field"><label>Número</label><input id="s1_num" type="text"></div>
         <div class="field"><label>Complemento</label><input id="s1_comp" type="text"></div>
@@ -678,7 +678,7 @@
         <div class="field full"><label>Nome Completo</label><input id="s2_nome" type="text" disabled></div>
         <div class="field"><label>CPF</label><input id="s2_cpf" type="text" oninput="maskCPF(this)" maxlength="14" disabled></div>
         <div class="field"><label>Nacionalidade</label><input id="s2_nac" type="text" value="BRASILEIRO(A)" disabled></div>
-        <div class="field"><label>CEP</label><input id="s2_cep" type="text" oninput="maskCEP(this)" maxlength="9" disabled></div>
+        <div class="field"><label>CEP</label><input id="s2_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'s2')" maxlength="9" disabled></div>
         <div class="field full"><label>Logradouro</label><input id="s2_rua" type="text" disabled></div>
         <div class="field"><label>Número</label><input id="s2_num" type="text" disabled></div>
         <div class="field"><label>Complemento</label><input id="s2_comp" type="text" disabled></div>
@@ -698,7 +698,7 @@
         <div class="field full"><label>Nome Completo</label><input id="s3_nome" type="text" disabled></div>
         <div class="field"><label>CPF</label><input id="s3_cpf" type="text" oninput="maskCPF(this)" maxlength="14" disabled></div>
         <div class="field"><label>Nacionalidade</label><input id="s3_nac" type="text" value="BRASILEIRO(A)" disabled></div>
-        <div class="field"><label>CEP</label><input id="s3_cep" type="text" oninput="maskCEP(this)" maxlength="9" disabled></div>
+        <div class="field"><label>CEP</label><input id="s3_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'s3')" maxlength="9" disabled></div>
         <div class="field full"><label>Logradouro</label><input id="s3_rua" type="text" disabled></div>
         <div class="field"><label>Número</label><input id="s3_num" type="text" disabled></div>
         <div class="field"><label>Complemento</label><input id="s3_comp" type="text" disabled></div>
@@ -714,7 +714,7 @@
       <div class="form-section-body">
         <div class="field full"><label>Nome Completo</label><input id="r_nome" type="text"></div>
         <div class="field"><label>CPF</label><input id="r_cpf" type="text" oninput="maskCPF(this)" maxlength="14"></div>
-        <div class="field"><label>CEP</label><input id="r_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field"><label>CEP</label><input id="r_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'r')" maxlength="9"></div>
         <div class="field full"><label>Logradouro</label><input id="r_rua" type="text"></div>
         <div class="field"><label>Número</label><input id="r_num" type="text"></div>
         <div class="field"><label>Complemento</label><input id="r_comp" type="text"></div>
@@ -731,7 +731,7 @@
       <div class="form-section-body">
         <div class="field full"><label>Nome Completo</label><input id="m_nome" type="text"></div>
         <div class="field"><label>CPF</label><input id="m_cpf" type="text" oninput="maskCPF(this)" maxlength="14"></div>
-        <div class="field"><label>CEP</label><input id="m_cep" type="text" oninput="maskCEP(this)" maxlength="9"></div>
+        <div class="field"><label>CEP</label><input id="m_cep" type="text" oninput="maskCEP(this)" onblur="onCEPBlurForm(this,'m')" maxlength="9"></div>
         <div class="field full"><label>Logradouro</label><input id="m_rua" type="text"></div>
         <div class="field"><label>Número</label><input id="m_num" type="text"></div>
         <div class="field"><label>Complemento</label><input id="m_comp" type="text"></div>
@@ -1058,7 +1058,8 @@ function buildFieldsGrid(ent) {
         value="${val.toString().replace(/"/g,'&quot;')}"
         placeholder="${c.optional ? 'Opcional' : 'Preencher'}"
         class="${missing}"
-        oninput="atualizarCampoEnt('${ent.id}','${c.key}',this)">
+        oninput="atualizarCampoEnt('${ent.id}','${c.key}',this);if(c.key==='cep')maskCEP(this);"
+        onblur="${c.key==='cep' ? `onCEPBlurCard(this,'${ent.id}')` : ''}">
     </div>`;
   }).join('') + `</div>`;
 }
@@ -1314,6 +1315,53 @@ function maskCNPJ(i) {
 function maskCEP(i) {
   let v = i.value.replace(/\D/g,'');
   i.value = v.replace(/^(\d{5})(\d)/,'$1-$2');
+}
+
+async function buscarCEP(cep, callbacks) {
+  const nums = cep.replace(/\D/g,'');
+  if (nums.length !== 8) return;
+  try {
+    const resp = await fetch(`https://viacep.com.br/ws/${nums}/json/`);
+    const data = await resp.json();
+    if (data.erro) return;
+    callbacks({
+      rua:    (data.logradouro || '').toUpperCase(),
+      bairro: (data.bairro     || '').toUpperCase(),
+      cid:    (data.localidade || '').toUpperCase(),
+      uf:     (data.uf         || '').toUpperCase(),
+    });
+  } catch(e) {}
+}
+
+// Busca CEP nos campos do formulário fixo (tela-3)
+function onCEPBlurForm(input, prefix) {
+  buscarCEP(input.value, (addr) => {
+    const set = (sfx, val) => {
+      const el = document.getElementById(prefix + sfx);
+      if (el && !el.value) el.value = val;
+    };
+    set('_rua',    addr.rua);
+    set('_bairro', addr.bairro);
+    set('_cid',    addr.cid);
+    set('_uf',     addr.uf);
+  });
+}
+
+// Busca CEP nos cards expandidos (tela-review)
+function onCEPBlurCard(input, entId) {
+  buscarCEP(input.value, (addr) => {
+    const ent = entidadesExtraidas.find(e => e.id === entId);
+    const fill = (key) => {
+      const el = document.getElementById(`field_${entId}_${key}`);
+      if (el && !el.value) {
+        el.value = addr[key] || '';
+        el.classList.remove('missing');
+        if (ent) ent.campos[key] = el.value;
+        atualizarCampoEnt(entId, key, el);
+      }
+    };
+    ['rua','bairro','cid','uf'].forEach(fill);
+  });
 }
 function maskMoeda(i) {
   let v = i.value.replace(/\D/g,'');
