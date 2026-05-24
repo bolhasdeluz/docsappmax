@@ -879,9 +879,56 @@
       .calc-wrap .c-row-total td { color:white; font-weight:700; font-size:15px; border:none; padding:16px 14px; }
       .calc-wrap .text-right { text-align:right; }
       .calc-wrap .c-footer { padding:0 24px 28px; font-size:11px; color:var(--tm); line-height:1.6; }
+      .calc-wrap .c-img-zone {
+        border: 2px dashed #d97706; border-radius:12px; background:#fffbeb;
+        padding:28px 20px; text-align:center; cursor:pointer;
+        margin-bottom:16px; position:relative; transition:background .15s;
+      }
+      .calc-wrap .c-img-zone:hover { background:#fef3c7; }
+      .calc-wrap .c-img-zone.drag-over { background:#fef3c7; border-color:#b45309; }
+      .calc-wrap .c-img-zone input[type=file] { display:none; }
+      .calc-wrap .c-img-zone img { max-height:180px; border-radius:8px; margin-top:10px; max-width:100%; object-fit:contain; }
+      .calc-wrap .c-img-zone-text { font-size:14px; font-weight:600; color:#92400e; }
+      .calc-wrap .c-img-zone-sub { font-size:12px; color:#b45309; margin-top:4px; }
+      .calc-wrap .c-extract-btn {
+        width:100%; padding:12px; border:none; border-radius:8px;
+        background:#d97706; color:white; font-size:14px; font-weight:600;
+        cursor:pointer; font-family:inherit; display:flex;
+        justify-content:center; align-items:center; gap:8px;
+        margin-bottom:16px; transition:opacity .15s;
+      }
+      .calc-wrap .c-extract-btn:hover { opacity:.88; }
+      .calc-wrap .c-extract-btn:disabled { opacity:.5; cursor:not-allowed; }
+      .calc-wrap .c-extract-status {
+        padding:10px 14px; border-radius:8px; font-size:13px;
+        margin-bottom:12px; display:none; align-items:center; gap:8px;
+      }
+      .calc-wrap .c-extract-status.visible { display:flex; }
+      .calc-wrap .c-extract-status.info { background:#fffbeb; color:#92400e; }
+      .calc-wrap .c-extract-status.success { background:#f0fdf4; color:#166534; }
+      .calc-wrap .c-extract-status.error { background:#fee2e2; color:#b91c1c; }
     </style>
 
     <div class="calc-wrap">
+
+      <!-- ZONA DE UPLOAD DE IMAGEM -->
+      <label class="c-img-zone" id="c_imgZone" for="c_imgInput"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="calcHandleDrop(event)">
+        <input type="file" id="c_imgInput" accept="image/*" onchange="calcHandleFile(this.files[0])">
+        <div class="upload-drop-icon">📸</div>
+        <div class="c-img-zone-text" id="c_imgZoneLabel">Cole ou arraste uma captura de tela aqui</div>
+        <div class="c-img-zone-sub">Ctrl+V para colar direto · ou clique para selecionar · PNG, JPG</div>
+        <img id="c_imgPreview" style="display:none;">
+      </label>
+
+      <button class="c-extract-btn" id="c_extractBtn" onclick="calcExtrairTaxas()" disabled>
+        🤖 Identificar Taxas com IA
+      </button>
+
+      <div class="c-extract-status" id="c_extractStatus"></div>
+
       <div class="c-block">
         <div class="c-title">1. Dados Fundamentais da Venda</div>
         <div class="c-grid">
@@ -2777,6 +2824,113 @@ function calcInit() {
   pctIds.forEach(id => { if(g(id)) g(id).value = calcMaskPct(g(id).value); });
 
   calcUpdate();
+}
+
+// ============================================================
+// CALCULADORA — EXTRAÇÃO DE TAXAS VIA IMAGEM (GROQ VISION)
+// ============================================================
+let calcImgBase64 = null;
+
+function calcSetStatus(tipo, msg) {
+  const el = document.getElementById('c_extractStatus');
+  if (!el) return;
+  el.className = `c-extract-status ${tipo} visible`;
+  el.textContent = msg;
+}
+
+function calcHandleFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    calcImgBase64 = e.target.result; // full data URL
+    const preview = document.getElementById('c_imgPreview');
+    const label = document.getElementById('c_imgZoneLabel');
+    const btn = document.getElementById('c_extractBtn');
+    if (preview) { preview.src = calcImgBase64; preview.style.display = 'block'; }
+    if (label) label.textContent = '✅ ' + file.name;
+    if (btn) btn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+function calcHandleDrop(event) {
+  event.preventDefault();
+  document.getElementById('c_imgZone')?.classList.remove('drag-over');
+  const file = event.dataTransfer?.files[0];
+  if (file) calcHandleFile(file);
+}
+
+// Ctrl+V paste support
+document.addEventListener('paste', (e) => {
+  const screen = document.getElementById('tela-calc');
+  if (!screen || !screen.classList.contains('active')) return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      calcHandleFile(item.getAsFile());
+      break;
+    }
+  }
+});
+
+async function calcExtrairTaxas() {
+  if (!calcImgBase64) return;
+  const btn = document.getElementById('c_extractBtn');
+  if (btn) btn.disabled = true;
+  calcSetStatus('info', '⏳ Analisando imagem com IA...');
+
+  try {
+    const base64data = calcImgBase64.split(',')[1];
+    const mimeType = calcImgBase64.split(';')[0].split(':')[1];
+
+    const resp = await fetch('https://sparkling-grass-bb3d.bolhasdeluz.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        docType: 'CALC_TAXAS',
+        imagem: { base64: base64data, mimeType }
+      })
+    });
+
+    if (!resp.ok) throw new Error('Erro ' + resp.status);
+    const data = await resp.json();
+    if (!data.choices?.[0]) throw new Error(data.error?.message || 'Resposta inválida');
+
+    let raw = data.choices[0].message.content.replace(/```json|```/g,'').trim();
+    const taxas = JSON.parse(raw);
+
+    // Preenche os campos
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (!el || val === undefined || val === null || val === '') return;
+      el.value = val;
+    };
+
+    if (taxas.taxa_processamento) set('c_taxaProc', calcMaskPct(taxas.taxa_processamento.toString().replace(/[^0-9,]/g,'')));
+    if (taxas.gateway_fixo)       set('c_taxaGate', calcMaskMoney(taxas.gateway_fixo.toString().replace(/[^0-9,]/g,'')));
+    if (taxas.garantia)           set('c_taxaGar',  calcMaskPct(taxas.garantia.toString().replace(/[^0-9,]/g,'')));
+    if (taxas.antecipacao)        set('c_taxaAnte', calcMaskPct(taxas.antecipacao.toString().replace(/[^0-9,]/g,'')));
+    if (taxas.saque_valor)        set('c_taxaSaque', calcMaskMoney(taxas.saque_valor.toString().replace(/[^0-9,]/g,'')));
+    if (taxas.saque_isento === true || taxas.saque_isento === 'true') {
+      const sel = document.getElementById('c_statusSaque');
+      if (sel) sel.value = 'isento';
+    } else if (taxas.saque_valor) {
+      const sel = document.getElementById('c_statusSaque');
+      if (sel) sel.value = 'cobrar';
+    }
+
+    calcUpdate();
+    const campos = Object.values(taxas).filter(v => v !== null && v !== '' && v !== false).length;
+    calcSetStatus('success', `✅ ${campos} taxas identificadas e preenchidas! Revise os valores abaixo.`);
+
+  } catch(e) {
+    calcSetStatus('error', '❌ Erro: ' + e.message);
+    console.error(e);
+  } finally {
+    const btn = document.getElementById('c_extractBtn');
+    if (btn) btn.disabled = false;
+  }
 }
 </script>
 </body>
