@@ -912,17 +912,39 @@
 
     <div class="calc-wrap">
 
-      <!-- ZONA DE UPLOAD DE IMAGEM -->
-      <label class="c-img-zone" id="c_imgZone" for="c_imgInput"
-        ondragover="event.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
-        ondrop="calcHandleDrop(event)">
-        <input type="file" id="c_imgInput" accept="image/*" onchange="calcHandleFile(this.files[0])">
-        <div class="upload-drop-icon">📸</div>
-        <div class="c-img-zone-text" id="c_imgZoneLabel">Cole ou arraste uma captura de tela aqui</div>
-        <div class="c-img-zone-sub">Ctrl+V para colar direto · ou clique para selecionar · PNG, JPG</div>
-        <img id="c_imgPreview" style="display:none;">
-      </label>
+      <!-- ZONAS DE UPLOAD -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#92400e;letter-spacing:.4px;margin-bottom:6px;">Taxas Gerais</div>
+          <label class="c-img-zone" id="c_imgZone" for="c_imgInput"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="calcHandleDrop(event,'geral')" style="margin-bottom:0;">
+            <input type="file" id="c_imgInput" accept="image/*" onchange="calcHandleFile(this.files[0],'geral')">
+            <div style="font-size:22px;margin-bottom:6px;">📸</div>
+            <div class="c-img-zone-text" id="c_imgZoneLabel" style="font-size:13px;">Cola ou arraste aqui</div>
+            <div class="c-img-zone-sub" style="font-size:11px;">Processamento, gateway, garantia, saque...</div>
+            <img id="c_imgPreview" style="display:none;margin-top:8px;max-height:120px;border-radius:6px;max-width:100%;">
+          </label>
+        </div>
+
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#1e40af;letter-spacing:.4px;margin-bottom:6px;">Taxas de Parcelamento</div>
+          <label class="c-img-zone" id="c_imgZone2" for="c_imgInput2"
+            ondragover="event.preventDefault();this.classList.add('drag-over')"
+            ondragleave="this.classList.remove('drag-over')"
+            ondrop="calcHandleDrop(event,'parc')"
+            style="margin-bottom:0;border-color:#3b82f6;background:#eff6ff;">
+            <input type="file" id="c_imgInput2" accept="image/*" onchange="calcHandleFile(this.files[0],'parc')">
+            <div style="font-size:22px;margin-bottom:6px;">💳</div>
+            <div class="c-img-zone-text" id="c_imgZoneLabel2" style="font-size:13px;color:#1e40af;">Cola ou arraste aqui</div>
+            <div class="c-img-zone-sub" style="font-size:11px;color:#3b82f6;">Tabela de parcelamento personalizada (1x-12x)</div>
+            <img id="c_imgPreview2" style="display:none;margin-top:8px;max-height:120px;border-radius:6px;max-width:100%;">
+          </label>
+        </div>
+
+      </div>
 
       <button class="c-extract-btn" id="c_extractBtn" onclick="calcExtrairTaxas()" disabled>
         🤖 Identificar Taxas com IA
@@ -2831,6 +2853,8 @@ function calcInit() {
 // CALCULADORA — EXTRAÇÃO DE TAXAS VIA IMAGEM (GROQ VISION)
 // ============================================================
 let calcImgBase64 = null;
+let calcImgBase64Parc = null;
+let calcLastPasteSlot = 'geral'; // tracks which slot gets Ctrl+V
 
 function calcSetStatus(tipo, msg) {
   const el = document.getElementById('c_extractStatus');
@@ -2839,29 +2863,40 @@ function calcSetStatus(tipo, msg) {
   el.textContent = msg;
 }
 
-function calcHandleFile(file) {
+function calcHandleFile(file, slot) {
   if (!file || !file.type.startsWith('image/')) return;
+  const isParc = slot === 'parc';
   const reader = new FileReader();
   reader.onload = (e) => {
-    calcImgBase64 = e.target.result; // full data URL
-    const preview = document.getElementById('c_imgPreview');
-    const label = document.getElementById('c_imgZoneLabel');
+    const dataUrl = e.target.result;
+    if (isParc) {
+      calcImgBase64Parc = dataUrl;
+      const preview = document.getElementById('c_imgPreview2');
+      const label = document.getElementById('c_imgZoneLabel2');
+      if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+      if (label) label.textContent = '✅ ' + (file.name || 'Imagem colada');
+    } else {
+      calcImgBase64 = dataUrl;
+      const preview = document.getElementById('c_imgPreview');
+      const label = document.getElementById('c_imgZoneLabel');
+      if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+      if (label) label.textContent = '✅ ' + (file.name || 'Imagem colada');
+    }
     const btn = document.getElementById('c_extractBtn');
-    if (preview) { preview.src = calcImgBase64; preview.style.display = 'block'; }
-    if (label) label.textContent = '✅ ' + file.name;
-    if (btn) btn.disabled = false;
+    if (btn && (calcImgBase64 || calcImgBase64Parc)) btn.disabled = false;
   };
   reader.readAsDataURL(file);
 }
 
-function calcHandleDrop(event) {
+function calcHandleDrop(event, slot) {
   event.preventDefault();
-  document.getElementById('c_imgZone')?.classList.remove('drag-over');
+  const zoneId = slot === 'parc' ? 'c_imgZone2' : 'c_imgZone';
+  document.getElementById(zoneId)?.classList.remove('drag-over');
   const file = event.dataTransfer?.files[0];
-  if (file) calcHandleFile(file);
+  if (file) calcHandleFile(file, slot);
 }
 
-// Ctrl+V paste support
+// Ctrl+V — paste into whichever zone was last clicked/hovered
 document.addEventListener('paste', (e) => {
   const screen = document.getElementById('tela-calc');
   if (!screen || !screen.classList.contains('active')) return;
@@ -2869,61 +2904,86 @@ document.addEventListener('paste', (e) => {
   if (!items) return;
   for (const item of items) {
     if (item.type.startsWith('image/')) {
-      calcHandleFile(item.getAsFile());
+      calcHandleFile(item.getAsFile(), calcLastPasteSlot);
       break;
     }
   }
 });
 
+// Track which zone was last interacted with for paste targeting
+['c_imgZone','c_imgZone2'].forEach(id => {
+  document.addEventListener('mouseover', (e) => {
+    if (e.target?.closest('#' + id)) {
+      calcLastPasteSlot = id === 'c_imgZone2' ? 'parc' : 'geral';
+    }
+  });
+});
+
+async function calcChamarWorkerImg(imgDataUrl, docType) {
+  const base64data = imgDataUrl.split(',')[1];
+  const mimeType = imgDataUrl.split(';')[0].split(':')[1];
+  const resp = await fetch('https://sparkling-grass-bb3d.bolhasdeluz.workers.dev', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ docType, imagem: { base64: base64data, mimeType } })
+  });
+  if (!resp.ok) throw new Error('Erro ' + resp.status);
+  const data = await resp.json();
+  if (!data.choices?.[0]) throw new Error(data.error?.message || 'Resposta inválida');
+  return JSON.parse(data.choices[0].message.content.replace(/```json|```/g,'').trim());
+}
+
 async function calcExtrairTaxas() {
-  if (!calcImgBase64) return;
+  if (!calcImgBase64 && !calcImgBase64Parc) return;
   const btn = document.getElementById('c_extractBtn');
   if (btn) btn.disabled = true;
-  calcSetStatus('info', '⏳ Analisando imagem com IA...');
+
+  let totalCampos = 0;
 
   try {
-    const base64data = calcImgBase64.split(',')[1];
-    const mimeType = calcImgBase64.split(';')[0].split(':')[1];
+    // 1. Taxas gerais
+    if (calcImgBase64) {
+      calcSetStatus('info', '⏳ Analisando taxas gerais...');
+      const taxas = await calcChamarWorkerImg(calcImgBase64, 'CALC_TAXAS');
 
-    const resp = await fetch('https://sparkling-grass-bb3d.bolhasdeluz.workers.dev', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        docType: 'CALC_TAXAS',
-        imagem: { base64: base64data, mimeType }
-      })
-    });
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el || val === undefined || val === null || val === '') return;
+        el.value = val; totalCampos++;
+      };
 
-    if (!resp.ok) throw new Error('Erro ' + resp.status);
-    const data = await resp.json();
-    if (!data.choices?.[0]) throw new Error(data.error?.message || 'Resposta inválida');
+      if (taxas.taxa_processamento) set('c_taxaProc', calcMaskPct(taxas.taxa_processamento.toString().replace(/[^0-9,]/g,'')));
+      if (taxas.gateway_fixo)       set('c_taxaGate', calcMaskMoney(taxas.gateway_fixo.toString().replace(/[^0-9,]/g,'')));
+      if (taxas.garantia)           set('c_taxaGar',  calcMaskPct(taxas.garantia.toString().replace(/[^0-9,]/g,'')));
+      if (taxas.antecipacao)        set('c_taxaAnte', calcMaskPct(taxas.antecipacao.toString().replace(/[^0-9,]/g,'')));
+      if (taxas.saque_valor)        set('c_taxaSaque', calcMaskMoney(taxas.saque_valor.toString().replace(/[^0-9,]/g,'')));
+      if (taxas.saque_isento === true || taxas.saque_isento === 'true') {
+        const sel = document.getElementById('c_statusSaque'); if (sel) sel.value = 'isento';
+      } else if (taxas.saque_valor) {
+        const sel = document.getElementById('c_statusSaque'); if (sel) sel.value = 'cobrar';
+      }
+    }
 
-    let raw = data.choices[0].message.content.replace(/```json|```/g,'').trim();
-    const taxas = JSON.parse(raw);
+    // 2. Taxas de parcelamento personalizadas
+    if (calcImgBase64Parc) {
+      calcSetStatus('info', '⏳ Analisando tabela de parcelamento...');
+      const parc = await calcChamarWorkerImg(calcImgBase64Parc, 'CALC_PARC');
 
-    // Preenche os campos
-    const set = (id, val) => {
-      const el = document.getElementById(id);
-      if (!el || val === undefined || val === null || val === '') return;
-      el.value = val;
-    };
+      // Ativa modo custom automaticamente
+      const modeloSel = document.getElementById('c_modeloCalculo');
+      if (modeloSel) modeloSel.value = 'custom';
 
-    if (taxas.taxa_processamento) set('c_taxaProc', calcMaskPct(taxas.taxa_processamento.toString().replace(/[^0-9,]/g,'')));
-    if (taxas.gateway_fixo)       set('c_taxaGate', calcMaskMoney(taxas.gateway_fixo.toString().replace(/[^0-9,]/g,'')));
-    if (taxas.garantia)           set('c_taxaGar',  calcMaskPct(taxas.garantia.toString().replace(/[^0-9,]/g,'')));
-    if (taxas.antecipacao)        set('c_taxaAnte', calcMaskPct(taxas.antecipacao.toString().replace(/[^0-9,]/g,'')));
-    if (taxas.saque_valor)        set('c_taxaSaque', calcMaskMoney(taxas.saque_valor.toString().replace(/[^0-9,]/g,'')));
-    if (taxas.saque_isento === true || taxas.saque_isento === 'true') {
-      const sel = document.getElementById('c_statusSaque');
-      if (sel) sel.value = 'isento';
-    } else if (taxas.saque_valor) {
-      const sel = document.getElementById('c_statusSaque');
-      if (sel) sel.value = 'cobrar';
+      for (let i = 1; i <= 12; i++) {
+        const key = `x${i}` ;
+        if (parc[key] !== undefined && parc[key] !== null && parc[key] !== '') {
+          const el = document.getElementById('cm' + i);
+          if (el) { el.value = calcMaskPct(parc[key].toString().replace(/[^0-9,]/g,'')); totalCampos++; }
+        }
+      }
     }
 
     calcUpdate();
-    const campos = Object.values(taxas).filter(v => v !== null && v !== '' && v !== false).length;
-    calcSetStatus('success', `✅ ${campos} taxas identificadas e preenchidas! Revise os valores abaixo.`);
+    calcSetStatus('success', `✅ ${totalCampos} valores identificados e preenchidos! Revise abaixo.`);
 
   } catch(e) {
     calcSetStatus('error', '❌ Erro: ' + e.message);
