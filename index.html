@@ -994,10 +994,10 @@
         </div>
       </div>
 
-      <div class="c-block">
+      <div class="c-block" id="c_card1Card">
         <div class="c-title">1. Dados Fundamentais da Venda</div>
         <div class="c-grid">
-          <div class="c-group" id="c_groupTipoValor">
+          <div class="c-group">
             <label>Tipo de Valor Informado</label>
             <select id="c_tipoOrigemValor">
               <option value="checkout_com_juros" selected>Valor Total do Pedido (com juros inclusos)</option>
@@ -1005,10 +1005,10 @@
             </select>
           </div>
           <div class="c-group">
-            <label id="c_labelVenda">Valor Digitado (R$)</label>
+            <label>Valor Digitado (R$)</label>
             <input type="text" id="c_vendaBruta" value="" placeholder="0,00">
           </div>
-          <div class="c-group" id="c_groupParcelas">
+          <div class="c-group">
             <label>Nº de Parcelas do Pedido</label>
             <select id="c_numParcelas">
               <option value="1">1x</option><option value="2">2x</option><option value="3">3x</option>
@@ -1016,6 +1016,17 @@
               <option value="7">7x</option><option value="8">8x</option><option value="9">9x</option>
               <option value="10" selected>10x</option><option value="11">11x</option><option value="12">12x</option>
             </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="c-block" id="c_card1Pix" style="display:none;">
+        <div class="c-title">1. Dados da Transação PIX</div>
+        <div class="c-grid">
+          <div class="c-group">
+            <label>Total Pago (R$)</label>
+            <input type="text" id="c_vendaBrutaPix" value="" placeholder="0,00"
+              oninput="document.getElementById('c_vendaBruta').value=this.value; this.value=calcMaskMoney(this.value); document.getElementById('c_vendaBruta').value=this.value; calcUpdate();">
           </div>
         </div>
       </div>
@@ -2766,6 +2777,10 @@ function calcParseBr(val) {
   if (!val) return 0;
   return parseFloat(val.toString().replace(/%/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.')) || 0;
 }
+function calcMaskMoneySync(input) {
+  input.value = calcMaskMoney(input.value);
+}
+
 function calcMaskMoney(v) {
   let n = v.replace(/\D/g,'');
   n = (n/100).toFixed(2)+'';
@@ -2961,65 +2976,58 @@ function calcSetMode(modo) {
   const isPix = modo === 'pix';
 
   // Toggle buttons
-  document.getElementById('c_modeCard')?.classList.toggle('active', !isPix);
-  document.getElementById('c_modePix')?.classList.toggle('active', isPix);
+  const btnCard = document.getElementById('c_modeCard');
+  const btnPix  = document.getElementById('c_modePix');
+  if (btnCard) { btnCard.classList.toggle('active', !isPix); }
+  if (btnPix)  { btnPix.classList.toggle('active',  isPix); }
 
-  // Esconde parcelamento
+  // Card 1: swap entre versão Cartão e PIX
+  const card1Card = document.getElementById('c_card1Card');
+  const card1Pix  = document.getElementById('c_card1Pix');
+  if (card1Card) card1Card.style.display = isPix ? 'none' : 'block';
+  if (card1Pix)  card1Pix.style.display  = isPix ? 'block' : 'none';
+
+  // Card 2 parcelamento
   const blockParc = document.getElementById('c_blockParc');
-  if (blockParc) blockParc.style.display = isPix ? 'none' : '';
+  if (blockParc) blockParc.style.display = isPix ? 'none' : 'block';
 
-  // Esconde tabela de parcelamento (card azul)
-  const tabelaCard = document.querySelector('[id="c_tabelaParc"]')?.closest('.c-block');
-  if (tabelaCard) tabelaCard.style.display = isPix ? 'none' : '';
+  // Card tabela de parcelamento (azul)
+  const tabelaParc = document.getElementById('c_tabelaParc');
+  if (tabelaParc) {
+    const tCard = tabelaParc.closest('.c-block');
+    if (tCard) tCard.style.display = isPix ? 'none' : 'block';
+  }
 
-  // Esconde antecipação
+  // Campo antecipação dentro do card 4
   const groupAnte = document.getElementById('c_groupAnte');
   if (groupAnte) groupAnte.style.display = isPix ? 'none' : '';
 
-  // Esconde coluna antecipado no relatório
+  // Coluna antecipado no relatório
   const thAnt = document.getElementById('c_thAnt');
   if (thAnt) thAnt.style.display = isPix ? 'none' : '';
   ['c_vBrutoAnt','c_vProcAnt','c_vGateAnt','c_vParcAnt','c_vLiqAnt','c_vGarAnt','c_vAnteAnt','c_vSaqueAnt','c_vFinalAnt'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.closest('td').style.display = isPix ? 'none' : '';
+    if (el && el.closest('td')) el.closest('td').style.display = isPix ? 'none' : '';
   });
 
-  // Badge PIX na taxa
-  const badge = document.getElementById('c_pixBadge');
-  if (badge) badge.style.display = isPix ? 'inline-block' : 'none';
-
-  // Card 1 — hide tipo/parcelas, show only "Total Pago" for PIX
-  const groupTipoValor = document.getElementById('c_groupTipoValor');
-  const groupParcelas  = document.getElementById('c_groupParcelas');
-  const labelVenda     = document.getElementById('c_labelVenda');
-  if (groupTipoValor) groupTipoValor.style.display = isPix ? 'none' : '';
-  if (groupParcelas)  groupParcelas.style.display  = isPix ? 'none' : '';
-  if (labelVenda)     labelVenda.textContent = isPix ? 'Total Pago (R$)' : 'Valor Digitado (R$)';
-
   if (isPix) {
-    // Força 1x sem juros
     const numParc = document.getElementById('c_numParcelas');
     if (numParc) numParc.value = '1';
-    const tipoOrigem = document.getElementById('c_tipoOrigemValor');
-    if (tipoOrigem) tipoOrigem.value = 'checkout_com_juros';
-    // Configura taxas PIX
     const proc = document.getElementById('c_taxaProc');
-    const gate = document.getElementById('c_taxaGate');
-    const repassar = document.getElementById('c_repassarJuros');
     if (proc) proc.value = '1,00 %';
+    const gate = document.getElementById('c_taxaGate');
     if (gate) gate.value = calcMaskMoney('99');
+    const repassar = document.getElementById('c_repassarJuros');
     if (repassar) repassar.value = 'nao';
     const modeloSel = document.getElementById('c_modeloCalculo');
     if (modeloSel) modeloSel.value = 'auto_mensal';
     const taxaParc = document.getElementById('c_taxaParc');
     if (taxaParc) taxaParc.value = '0,00 %';
   } else {
-    // Restaura padrões cartão
     const proc = document.getElementById('c_taxaProc');
-    const gate = document.getElementById('c_taxaGate');
     if (proc) proc.value = '4,99 %';
+    const gate = document.getElementById('c_taxaGate');
     if (gate) gate.value = calcMaskMoney('99');
-    if (labelVenda) labelVenda.textContent = 'Valor Digitado (R$)';
   }
 
   calcUpdate();
