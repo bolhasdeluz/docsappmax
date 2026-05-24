@@ -1152,7 +1152,7 @@
 
             <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:#1e3a5f;color:white;">
               <div>
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.75;letter-spacing:.5px;">Disponível para Antecipação</div>
+                <div id="c_lblAnt" style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:.75;letter-spacing:.5px;">Disponível para Antecipação</div>
                 <div style="font-size:18px;font-weight:700;margin-top:3px;" id="c_vFinalAnt">R$ 0,00</div>
               </div>
               <div style="font-size:22px;opacity:.6;">⚡</div>
@@ -3010,6 +3010,10 @@ function calcSetMode(modo) {
     const el = document.getElementById(id);
     if (el && el.closest('td')) el.closest('td').style.display = isPix ? 'none' : '';
   });
+
+  // Label do primeiro card de resumo
+  const lblAnt = document.getElementById('c_lblAnt');
+  if (lblAnt) lblAnt.textContent = isPix ? 'DISPONÍVEL PARA SAQUE' : 'DISPONÍVEL PARA ANTECIPAÇÃO';
 
   if (isPix) {
     const numParc = document.getElementById('c_numParcelas');
