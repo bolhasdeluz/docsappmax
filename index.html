@@ -1221,10 +1221,23 @@ Para cartão CNPJ: preencha só pj_*. Deixe "" campos não encontrados. Nunca in
       body: JSON.stringify({ texto: textoCompleto, docType: docAtual })
     });
 
-    if (!resp.ok) throw new Error(`Erro ${resp.status} no Worker`);
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Erro ${resp.status} no Worker: ${errText.slice(0,200)}`);
+    }
 
     const data = await resp.json();
-    const dados = JSON.parse(data.choices[0].message.content);
+
+    // Diagnóstico: se a resposta não tem o formato esperado
+    if (!data.choices || !data.choices[0]) {
+      const detalhe = data.error?.message || JSON.stringify(data).slice(0, 300);
+      throw new Error('Resposta inesperada do Worker: ' + detalhe);
+    }
+
+    let dadosRaw = data.choices[0].message.content;
+    // Remove possíveis backticks de markdown
+    dadosRaw = dadosRaw.replace(/```json|```/g, '').trim();
+    const dados = JSON.parse(dadosRaw);
 
     mostrarReview(dados);
     setStatus('success', '✅ Dados extraídos com sucesso! Confirme os papéis e gere.');
