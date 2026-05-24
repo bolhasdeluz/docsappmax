@@ -879,6 +879,25 @@
       .calc-wrap .c-row-total td { color:white; font-weight:700; font-size:15px; border:none; padding:16px 14px; }
       .calc-wrap .text-right { text-align:right; }
       .calc-wrap .c-footer { padding:0 24px 28px; font-size:11px; color:var(--tm); line-height:1.6; }
+      .calc-wrap .c-mode-toggle {
+        display:flex; background:#f0f2f5; border-radius:10px; padding:4px;
+        margin-bottom:16px; gap:4px;
+      }
+      .calc-wrap .c-mode-btn {
+        flex:1; padding:10px; border:none; border-radius:7px; font-size:13px;
+        font-weight:600; cursor:pointer; font-family:inherit;
+        background:transparent; color:var(--tm); transition:all .15s;
+      }
+      .calc-wrap .c-mode-btn.active {
+        background:white; color:var(--cd);
+        box-shadow:0 1px 4px rgba(0,0,0,.1);
+      }
+      .calc-wrap .c-mode-btn.pix.active { color:#00a86b; }
+      .calc-wrap .pix-badge {
+        display:inline-block; background:#e6f9f2; color:#00a86b;
+        font-size:10px; font-weight:700; border-radius:4px;
+        padding:2px 6px; margin-left:6px; vertical-align:middle;
+      }
       .calc-wrap .c-img-zone {
         display:block; width:100%; box-sizing:border-box;
         border: 2px dashed #d97706; border-radius:12px; background:#fffbeb;
@@ -931,13 +950,7 @@
 
         <div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#1e40af;letter-spacing:.4px;margin-bottom:6px;">Taxas de Parcelamento</div>
-          <select id="c_tabelaParc" onchange="calcAplicarTabela(this.value)"
-            style="width:100%;padding:9px 12px;border:1px solid #93c5fd;border-radius:7px;font-size:13px;font-family:inherit;background:#eff6ff;color:#1e40af;font-weight:600;margin-bottom:8px;">
-            <option value="">— Ou selecione tabela padrão —</option>
-            <option value="simples_249">Simples 2,49% ao mês</option>
-            <option value="simples_219">Simples 2,19% ao mês</option>
-            <option value="composta_299">Composta 2,99% ao mês (prestações fixas)</option>
-          </select>
+
           <label class="c-img-zone" id="c_imgZone2" for="c_imgInput2"
             ondragover="event.preventDefault();this.classList.add('drag-over')"
             ondragleave="this.classList.remove('drag-over')"
@@ -959,18 +972,23 @@
 
       <div class="c-extract-status" id="c_extractStatus"></div>
 
-      <!-- PLANO PRÉ-CONFIGURADO -->
-      <div class="c-block" style="background:#f0fdf4;border-color:#86efac;">
-        <div class="c-title" style="color:#166534;">⚡ Plano de Taxas Padrão Appmax</div>
-        <div class="c-grid">
-          <div class="c-group" style="grid-column:1/-1;">
-            <label>Selecionar Plano</label>
-            <select id="c_planoPadrao" onchange="calcAplicarPlano(this.value)" style="border-color:#86efac;background:#f0fdf4;">
-              <option value="">— Selecione para pré-preencher —</option>
-              <option value="padrao30">Padrão — 4,99% (Recebimento 30 dias)</option>
-              <option value="padrao_ant">Padrão — 5,99% (Recebimento Antecipado)</option>
-            </select>
-          </div>
+      <!-- MODO CARTÃO / PIX -->
+      <div class="c-mode-toggle">
+        <button class="c-mode-btn active" id="c_modeCard" onclick="calcSetMode('card')">💳 Cartão de Crédito</button>
+        <button class="c-mode-btn pix" id="c_modePix" onclick="calcSetMode('pix')">🔑 PIX</button>
+      </div>
+
+      <!-- TABELA DE PARCELAMENTO PRÉ-CONFIGURADA -->
+      <div class="c-block" style="background:#eff6ff;border-color:#93c5fd;">
+        <div class="c-title" style="color:#1e40af;">💳 Tabela de Parcelamento</div>
+        <div class="c-group">
+          <label>Selecionar tabela padrão</label>
+          <select id="c_tabelaParc" onchange="calcAplicarTabela(this.value)" style="border-color:#93c5fd;background:white;">
+            <option value="">— Zerado (preencher manualmente ou por imagem) —</option>
+            <option value="simples_219">Simples 2,19% ao mês</option>
+            <option value="simples_249">Simples 2,49% ao mês</option>
+            <option value="composta_299">Composta 2,99% ao mês (prestações fixas)</option>
+          </select>
         </div>
       </div>
 
@@ -986,7 +1004,7 @@
           </div>
           <div class="c-group">
             <label>Valor Digitado (R$)</label>
-            <input type="text" id="c_vendaBruta" value="1.557,50">
+            <input type="text" id="c_vendaBruta" value="" placeholder="0,00">
           </div>
           <div class="c-group">
             <label>Nº de Parcelas do Pedido</label>
@@ -1000,7 +1018,7 @@
         </div>
       </div>
 
-      <div class="c-block">
+      <div class="c-block" id="c_blockParc">
         <div class="c-title">2. Estratégia de Parcelamento (Juros)</div>
         <div class="c-grid">
           <div class="c-group">
@@ -1038,12 +1056,12 @@
         </div>
       </div>
 
-      <div class="c-block">
+      <div class="c-block" id="c_blockRetencao">
         <div class="c-title">4. Retenção, Prazos e Saque</div>
         <div class="c-grid">
-          <div class="c-group"><label>Garantia Base (%)</label><input type="text" id="c_taxaGar" value="15,00 %"></div>
+          <div class="c-group"><label>Garantia Base (%)</label><input type="text" id="c_taxaGar" value="7,50 %"></div>
           <div class="c-group"><label>Liberação da Garantia (Dias)</label><input type="number" id="c_prazoGarantia" value="30" min="0"></div>
-          <div class="c-group"><label>Taxa de Antecipação (%)</label><input type="text" id="c_taxaAnte" value="1,49 %"></div>
+          <div class="c-group" id="c_groupAnte"><label>Taxa de Antecipação (%)</label><input type="text" id="c_taxaAnte" value="1,49 %"></div>
           <div class="c-group">
             <label>Configuração de Saque</label>
             <select id="c_statusSaque">
@@ -1062,17 +1080,17 @@
         <div class="c-title">Tabela de Parcelamento Customizada (Taxa Final Acumulada por Mês)</div>
         <div class="c-matrix-grid">
           <div class="c-mx"><label>1x (%)</label><input id="cm1" value="0,00 %"></div>
-          <div class="c-mx"><label>2x (%)</label><input id="cm2" value="3,50 %"></div>
-          <div class="c-mx"><label>3x (%)</label><input id="cm3" value="5,20 %"></div>
-          <div class="c-mx"><label>4x (%)</label><input id="cm4" value="7,00 %"></div>
-          <div class="c-mx"><label>5x (%)</label><input id="cm5" value="8,90 %"></div>
-          <div class="c-mx"><label>6x (%)</label><input id="cm6" value="10,50 %"></div>
-          <div class="c-mx"><label>7x (%)</label><input id="cm7" value="12,20 %"></div>
-          <div class="c-mx"><label>8x (%)</label><input id="cm8" value="14,00 %"></div>
-          <div class="c-mx"><label>9x (%)</label><input id="cm9" value="15,80 %"></div>
-          <div class="c-mx"><label>10x (%)</label><input id="cm10" value="21,90 %"></div>
-          <div class="c-mx"><label>11x (%)</label><input id="cm11" value="19,20 %"></div>
-          <div class="c-mx"><label>12x (%)</label><input id="cm12" value="21,00 %"></div>
+          <div class="c-mx"><label>2x (%)</label><input id="cm2" value="0,00 %"></div>
+          <div class="c-mx"><label>3x (%)</label><input id="cm3" value="0,00 %"></div>
+          <div class="c-mx"><label>4x (%)</label><input id="cm4" value="0,00 %"></div>
+          <div class="c-mx"><label>5x (%)</label><input id="cm5" value="0,00 %"></div>
+          <div class="c-mx"><label>6x (%)</label><input id="cm6" value="0,00 %"></div>
+          <div class="c-mx"><label>7x (%)</label><input id="cm7" value="0,00 %"></div>
+          <div class="c-mx"><label>8x (%)</label><input id="cm8" value="0,00 %"></div>
+          <div class="c-mx"><label>9x (%)</label><input id="cm9" value="0,00 %"></div>
+          <div class="c-mx"><label>10x (%)</label><input id="cm10" value="0,00 %"></div>
+          <div class="c-mx"><label>11x (%)</label><input id="cm11" value="0,00 %"></div>
+          <div class="c-mx"><label>12x (%)</label><input id="cm12" value="0,00 %"></div>
         </div>
       </div>
 
@@ -1102,7 +1120,7 @@
             <thead><tr>
               <th>Fluxo de Entrada e Descontos</th>
               <th class="text-right">30 Dias</th>
-              <th class="text-right">Antecipado</th>
+              <th class="text-right" id="c_thAnt">Antecipado</th>
             </tr></thead>
             <tbody>
               <tr><td><b>Valor Total da Transação (Checkout)</b></td><td class="text-right" id="c_vBruto30">R$ 0,00</td><td class="text-right" id="c_vBrutoAnt">R$ 0,00</td></tr>
@@ -2753,9 +2771,30 @@ function calcMaskMoney(v) {
   return n;
 }
 function calcMaskPct(v) {
-  let n = v.replace(/\D/g,'');
-  n = (n/100).toFixed(2)+'';
-  return n.replace('.',',') + ' %';
+  // If value already has comma or percent sign (from existing formatted value), keep as-is after cleaning
+  let raw = v.toString().replace(/%/g,'').replace(/\s/g,'').trim();
+  
+  // Already formatted like "5,00" or "5.00" — reformat
+  if (raw.includes(',') || (raw.includes('.') && raw.split('.')[1]?.length <= 2)) {
+    let n = raw.replace(',','.').replace(/[^0-9.]/g,'');
+    let f = parseFloat(n);
+    if (isNaN(f)) return '0,00 %';
+    return f.toFixed(2).replace('.',',') + ' %';
+  }
+  
+  // Pure digits typed by user — treat as "value * 100" only if 4+ digits, else treat as whole number
+  let digits = raw.replace(/\D/g,'');
+  if (!digits) return '0,00 %';
+  
+  // 1-3 digits = whole number (5 → 5,00%, 15 → 15,00%, 499 → 4,99%)
+  // 4+ digits = centesimal (1500 → 15,00%)
+  let num;
+  if (digits.length <= 3) {
+    num = parseInt(digits);
+  } else {
+    num = parseInt(digits) / 100;
+  }
+  return num.toFixed(2).replace('.',',') + ' %';
 }
 
 function calcUpdate() {
@@ -2902,12 +2941,74 @@ function calcInit() {
   g('c_prazoGarantia')?.addEventListener('input', calcUpdate);
 
   // Init masks
-  if (g('c_vendaBruta')) g('c_vendaBruta').value = calcMaskMoney(g('c_vendaBruta').value);
-  pctIds.forEach(id => { if(g(id)) g(id).value = calcMaskPct(g(id).value); });
+  if (g('c_vendaBruta') && g('c_vendaBruta').value) g('c_vendaBruta').value = calcMaskMoney(g('c_vendaBruta').value);
+  pctIds.forEach(id => { if(g(id) && g(id).value) g(id).value = calcMaskPct(g(id).value); });
 
   calcUpdate();
 }
 
+
+
+// ============================================================
+// MODO PIX / CARTÃO
+// ============================================================
+let calcModoAtual = 'card';
+
+function calcSetMode(modo) {
+  calcModoAtual = modo;
+  const isPix = modo === 'pix';
+
+  // Toggle buttons
+  document.getElementById('c_modeCard')?.classList.toggle('active', !isPix);
+  document.getElementById('c_modePix')?.classList.toggle('active', isPix);
+
+  // Esconde parcelamento
+  const blockParc = document.getElementById('c_blockParc');
+  if (blockParc) blockParc.style.display = isPix ? 'none' : '';
+
+  // Esconde tabela de parcelamento (card azul)
+  const tabelaCard = document.querySelector('[id="c_tabelaParc"]')?.closest('.c-block');
+  if (tabelaCard) tabelaCard.style.display = isPix ? 'none' : '';
+
+  // Esconde antecipação
+  const groupAnte = document.getElementById('c_groupAnte');
+  if (groupAnte) groupAnte.style.display = isPix ? 'none' : '';
+
+  // Esconde coluna antecipado no relatório
+  const thAnt = document.getElementById('c_thAnt');
+  if (thAnt) thAnt.style.display = isPix ? 'none' : '';
+  ['c_vBrutoAnt','c_vProcAnt','c_vGateAnt','c_vParcAnt','c_vLiqAnt','c_vGarAnt','c_vAnteAnt','c_vSaqueAnt','c_vFinalAnt'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.closest('td').style.display = isPix ? 'none' : '';
+  });
+
+  // Badge PIX na taxa
+  const badge = document.getElementById('c_pixBadge');
+  if (badge) badge.style.display = isPix ? 'inline-block' : 'none';
+
+  if (isPix) {
+    // Configura taxas PIX
+    const proc = document.getElementById('c_taxaProc');
+    const gate = document.getElementById('c_taxaGate');
+    const repassar = document.getElementById('c_repassarJuros');
+    if (proc) proc.value = '1,00 %';
+    if (gate) gate.value = calcMaskMoney('99');
+    if (repassar) repassar.value = 'nao'; // sem parcelamento
+    // Zera parcelamento
+    const modeloSel = document.getElementById('c_modeloCalculo');
+    if (modeloSel) modeloSel.value = 'auto_mensal';
+    const taxaParc = document.getElementById('c_taxaParc');
+    if (taxaParc) taxaParc.value = '0,00 %';
+  } else {
+    // Restaura padrões cartão
+    const proc = document.getElementById('c_taxaProc');
+    const gate = document.getElementById('c_taxaGate');
+    if (proc) proc.value = '4,99 %';
+    if (gate) gate.value = calcMaskMoney('99');
+  }
+
+  calcUpdate();
+}
 
 // ============================================================
 // PLANOS PRÉ-CONFIGURADOS
@@ -2957,7 +3058,17 @@ function calcAplicarPlano(chave) {
 }
 
 function calcAplicarTabela(chave) {
-  if (!chave) return;
+  // Zero out if empty selected
+  if (!chave) {
+    for (let i = 1; i <= 12; i++) {
+      const el = document.getElementById('cm'+i);
+      if (el) el.value = '0,00 %';
+    }
+    const modeloSel = document.getElementById('c_modeloCalculo');
+    if (modeloSel) modeloSel.value = 'auto_mensal';
+    calcUpdate();
+    return;
+  }
   const t = CALC_TABELAS[chave];
   if (!t) return;
 
