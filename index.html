@@ -125,6 +125,7 @@
       margin-bottom: 8px;
     }
     .upload-drop {
+      display: block;
       border: 2px dashed var(--purple-light);
       border-radius: var(--radius);
       padding: 32px 20px;
@@ -133,6 +134,8 @@
       background: var(--purple-dim);
       transition: all 0.15s;
       margin-bottom: 16px;
+      width: 100%;
+      box-sizing: border-box;
     }
     .upload-drop:hover { background: #e3dcf5; border-color: var(--purple); }
     .upload-drop input { display: none; }
@@ -542,7 +545,7 @@
 
     <div class="card">
       <div class="section-label">Upload de PDF</div>
-      <label class="upload-drop" for="file-pdf">
+      <label class="upload-drop">
         <input type="file" id="file-pdf" accept="application/pdf" onchange="onPdfSelecionado(this, 'upload-label')">
         <div class="upload-drop-icon">📄</div>
         <div class="upload-drop-text" id="upload-label">Clique para selecionar o PDF principal</div>
@@ -552,7 +555,7 @@
       <!-- SEGUNDO PDF — só aparece para PJ -->
       <div id="upload-qsa-container" class="hidden">
         <div class="divider">+ documento da empresa</div>
-        <label class="upload-drop" for="file-qsa" style="border-color: #2e7d32; background: #f0faf4;">
+        <label class="upload-drop" style="border-color: #2e7d32; background: #f0faf4;">
           <input type="file" id="file-qsa" accept="application/pdf" onchange="onPdfSelecionado(this, 'upload-qsa-label')">
           <div class="upload-drop-icon">🏢</div>
           <div class="upload-drop-text" id="upload-qsa-label" style="color: #2e7d32;">Clique para selecionar o Cartão CNPJ (QSA)</div>
