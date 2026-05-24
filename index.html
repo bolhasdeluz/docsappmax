@@ -311,6 +311,63 @@
 
 
 
+
+    /* EXPANDABLE CARDS */
+    .entity-card { cursor: default; flex-wrap: wrap; }
+    .entity-card-header {
+      display: flex; align-items: center; gap: 14px;
+      width: 100%; cursor: pointer; user-select: none;
+    }
+    .entity-card-header:hover .entity-card-name { color: var(--purple); }
+    .expand-arrow {
+      margin-left: auto; font-size: 13px; color: var(--muted);
+      transition: transform 0.2s; flex-shrink: 0;
+    }
+    .entity-card.expanded .expand-arrow { transform: rotate(180deg); }
+    .entity-card-fields {
+      display: none; width: 100%; margin-top: 14px;
+      padding-top: 14px; border-top: 1px solid var(--border);
+      display: none;
+    }
+    .entity-card.expanded .entity-card-fields { display: block; }
+    .fields-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .field-inline { display: flex; flex-direction: column; gap: 4px; }
+    .field-inline label {
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .field-inline input {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px; font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      text-transform: uppercase; color: var(--text);
+      background: #fafaf9; transition: border 0.15s;
+    }
+    .field-inline input:focus {
+      outline: none; border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(92,61,153,0.09);
+      background: white;
+    }
+    .field-inline input.missing {
+      border-color: #f59e0b;
+      background: #fffbeb;
+    }
+    .field-inline input.missing:focus {
+      border-color: var(--purple);
+      background: white;
+    }
+    .field-full { grid-column: 1 / -1; }
+    .expand-hint {
+      font-size: 11px; color: var(--muted); margin-top: 4px;
+      display: flex; align-items: center; gap: 4px;
+    }
+
     /* CAMPOS FALTANDO */
     .entity-card-missing { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
     .missing-tag {
@@ -966,6 +1023,72 @@ function verificarFaltando(ent) {
     .map(c => c.label);
 }
 
+function buildFieldsGrid(ent) {
+  const isPJ = ent.tipo === 'empresa';
+  const campos = isPJ ? [
+    { key: 'nome',   label: 'Razão Social', full: true  },
+    { key: 'cnpj',   label: 'CNPJ'                      },
+    { key: 'cep',    label: 'CEP'                       },
+    { key: 'rua',    label: 'Logradouro',   full: true  },
+    { key: 'num',    label: 'Número'                    },
+    { key: 'comp',   label: 'Complemento', optional: true },
+    { key: 'bairro', label: 'Bairro'                    },
+    { key: 'cid',    label: 'Cidade'                    },
+    { key: 'uf',     label: 'UF'                        },
+  ] : [
+    { key: 'nome',   label: 'Nome Completo', full: true },
+    { key: 'cpf',    label: 'CPF'                       },
+    { key: 'nac',    label: 'Nacionalidade'             },
+    { key: 'cep',    label: 'CEP'                       },
+    { key: 'rua',    label: 'Logradouro',   full: true  },
+    { key: 'num',    label: 'Número'                    },
+    { key: 'comp',   label: 'Complemento', optional: true },
+    { key: 'bairro', label: 'Bairro'                    },
+    { key: 'cid',    label: 'Cidade'                    },
+    { key: 'uf',     label: 'UF'                        },
+  ];
+
+  return `<div class="fields-grid">` + campos.map(c => {
+    const val = ent.campos[c.key] || '';
+    const missing = !val && !c.optional ? ' missing' : '';
+    return `<div class="field-inline ${c.full ? 'field-full' : ''}">
+      <label>${c.label}${!c.optional && !val ? ' ⚠' : ''}</label>
+      <input type="text" 
+        id="field_${ent.id}_${c.key}" 
+        value="${val.toString().replace(/"/g,'&quot;')}"
+        placeholder="${c.optional ? 'Opcional' : 'Preencher'}"
+        class="${missing}"
+        oninput="atualizarCampoEnt('${ent.id}','${c.key}',this)">
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+function atualizarCampoEnt(entId, campoKey, input) {
+  const ent = entidadesExtraidas.find(e => e.id === entId);
+  if (!ent) return;
+  ent.campos[campoKey] = input.value;
+  // Remove classe missing se preenchido
+  input.classList.toggle('missing', !input.value.trim());
+  // Atualiza badge no header
+  const faltando = verificarFaltando(ent);
+  const card = document.getElementById('ecard_' + entId);
+  if (card) {
+    card.classList.toggle('tem-pendencia', faltando.length > 0);
+    card.classList.toggle('completo', faltando.length === 0);
+    const badge = card.querySelector('.entity-card-missing');
+    if (badge) {
+      badge.innerHTML = faltando.length > 0
+        ? faltando.map(f => `<span class="missing-tag">⚠ ${f}</span>`).join('')
+        : `<span style="color:var(--green);font-size:12px;font-weight:600;">✅ Completo</span>`;
+    }
+  }
+}
+
+function toggleCard(entId) {
+  const card = document.getElementById('ecard_' + entId);
+  if (card) card.classList.toggle('expanded');
+}
+
 function mostrarReview(dados) {
   entidadesExtraidas = detectarEntidades(dados);
   const container = document.getElementById('review-cards');
@@ -973,36 +1096,58 @@ function mostrarReview(dados) {
 
   if (entidadesExtraidas.length === 0) {
     container.innerHTML = '<div class="card" style="text-align:center;color:var(--muted);">Nenhum dado identificado. Tente preencher manualmente.</div>';
+    irTela('tela-review');
+    return;
   }
 
   entidadesExtraidas.forEach(ent => {
     const faltando = verificarFaltando(ent);
     const temPend = faltando.length > 0;
-    const div = document.createElement('div');
-    div.className = 'entity-card ' + (temPend ? 'tem-pendencia' : 'completo');
 
     const missingHtml = temPend
-      ? `<div class="entity-card-missing">${faltando.map(f => `<span class="missing-tag">⚠ ${f}</span>`).join('')}</div>`
-      : `<div class="entity-card-missing"><span style="color:var(--green);font-size:12px;font-weight:600;">✅ Completo</span></div>`;
+      ? faltando.map(f => `<span class="missing-tag">⚠ ${f}</span>`).join('')
+      : `<span style="color:var(--green);font-size:12px;font-weight:600;">✅ Completo</span>`;
+
+    const div = document.createElement('div');
+    div.className = 'entity-card ' + (temPend ? 'tem-pendencia' : 'completo');
+    div.id = 'ecard_' + ent.id;
 
     div.innerHTML = `
-      <div class="entity-card-icon">${ent.tipo === 'empresa' ? '🏢' : '👤'}</div>
-      <div class="entity-card-info">
-        <div class="entity-card-name">${ent.nome}</div>
-        <div class="entity-card-doc">${ent.doc}</div>
-        ${missingHtml}
+      <div class="entity-card-header" onclick="toggleCard('${ent.id}')">
+        <div class="entity-card-icon">${ent.tipo === 'empresa' ? '🏢' : '👤'}</div>
+        <div class="entity-card-info">
+          <div class="entity-card-name">${ent.nome}</div>
+          <div class="entity-card-doc">${ent.doc}</div>
+          <div class="entity-card-missing">${missingHtml}</div>
+        </div>
+        <div class="entity-card-role" onclick="event.stopPropagation()">
+          <select id="role_${ent.id}">${getRoleOptions(ent.tipo, ent.role)}</select>
+        </div>
+        <div class="expand-arrow">▼</div>
       </div>
-      <div class="entity-card-role">
-        <select id="role_${ent.id}">${getRoleOptions(ent.tipo, ent.role)}</select>
+      <div class="entity-card-fields">
+        ${buildFieldsGrid(ent)}
       </div>
     `;
     container.appendChild(div);
+
+    // Auto-expande cards com pendência
+    if (temPend) setTimeout(() => div.classList.add('expanded'), 50);
   });
 
   irTela('tela-review');
 }
 
 function gerarDocsFromReview() {
+  // Primeiro sincroniza campos editados nos cards de volta para ent.campos
+  entidadesExtraidas.forEach(ent => {
+    const allKeys = ['nome','cnpj','cpf','nac','cep','rua','num','comp','bairro','cid','uf'];
+    allKeys.forEach(key => {
+      const el = document.getElementById(`field_${ent.id}_${key}`);
+      if (el) ent.campos[key] = el.value;
+    });
+  });
+
   const remapped = {};
   const pendencias = [];
 
