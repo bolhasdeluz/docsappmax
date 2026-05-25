@@ -2316,8 +2316,10 @@ function gerarDocx(tipo) {
     return v(fb);
   };
 
-  const p2on = document.getElementById('toggle_p2')?.checked;
-  const p3on = document.getElementById('toggle_p3')?.checked;
+  const toggle_p2 = document.getElementById('toggle_p2');
+  const toggle_p3 = document.getElementById('toggle_p3');
+  const p2on = toggle_p2 ? toggle_p2.checked : !!v('p2_nome');
+  const p3on = toggle_p3 ? toggle_p3.checked : !!v('p3_nome');
   const s2on = document.getElementById('toggle_s2')?.checked;
   const s3on = document.getElementById('toggle_s3')?.checked;
 
@@ -2415,9 +2417,11 @@ function gerarDocx(tipo) {
     html += p(`Razão Social: ${v('pj_nome')}`);
     html += p(`CNPJ: ${v('pj_cnpj')}`);
     html += p(`Endereço: ${v('pj_rua')}, ${v('pj_num')}${v('pj_comp')?` / ${v('pj_comp')}`:''}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}`);
-    let rep = `Representada neste ato por ${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}`;
-    if (p2on) rep += `, ${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}`;
-    if (p3on) rep += ` e ${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}`;
+    const repParts1 = [];
+    if (v('p1_nome')) repParts1.push(`${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}`);
+    if (p2on && v('p2_nome')) repParts1.push(`${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}`);
+    if (p3on && v('p3_nome')) repParts1.push(`${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}`);
+    let rep = 'Representada neste ato por ' + repParts1.join(', ');
     html += p(rep + '.');
   }
 
@@ -2515,8 +2519,10 @@ function gerarPDF(tipo) {
     y += 15;
   }
 
-  const p2on = document.getElementById('toggle_p2')?.checked;
-  const p3on = document.getElementById('toggle_p3')?.checked;
+  const toggle_p2 = document.getElementById('toggle_p2');
+  const toggle_p3 = document.getElementById('toggle_p3');
+  const p2on = toggle_p2 ? toggle_p2.checked : !!v('p2_nome');
+  const p3on = toggle_p3 ? toggle_p3.checked : !!v('p3_nome');
   const s2on = document.getElementById('toggle_s2')?.checked;
   const s3on = document.getElementById('toggle_s3')?.checked;
 
@@ -2681,9 +2687,11 @@ function gerarPDF(tipo) {
     doc.text('TERMO DE REVOGAÇÃO E CANCELAMENTO DE PROCURAÇÃO PARTICULAR', 105, y, {align:'center'}); y += 15;
     txt('OUTORGANTE:', true, 'left');
     txt(`Razão Social: ${v('pj_nome')}\nCNPJ: ${v('pj_cnpj')}\nEndereço: ${v('pj_rua')}, ${v('pj_num')}${comp('pj_comp')}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}`, false, 'left'); y += 3;
-    let rep = `Representada neste ato por seu representante legal, ${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}`;
-    if (p2on) rep += `, ${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}`;
-    if (p3on) rep += ` e ${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}`;
+    const repParts2 = [];
+    if (v('p1_nome')) repParts2.push(`${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}`);
+    if (p2on && v('p2_nome')) repParts2.push(`${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}`);
+    if (p3on && v('p3_nome')) repParts2.push(`${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}`);
+    let rep = 'Representada neste ato por seu representante legal, ' + repParts2.join(', ');
     txt(rep + '.'); y += 5;
     txt('OUTORGADO:', true, 'left');
     const addOut = (pre) => {
@@ -2713,9 +2721,11 @@ function gerarPDF(tipo) {
     txt(`Nome: ${v('p1_nome')}\nNacionalidade: ${v('p1_nac')}\nCPF: ${v('p1_cpf')}\nEndereço: ${v('p1_rua')}, ${v('p1_num')}${comp('p1_comp')}, ${v('p1_bairro')} - ${v('p1_cid')}/${v('p1_uf')} - CEP ${v('p1_cep')}`, false, 'left');
   } else {
     txt(`Razão Social: ${v('pj_nome')}\nCNPJ: ${v('pj_cnpj')}\nEndereço: ${v('pj_rua')}, ${v('pj_num')}${comp('pj_comp')}, ${v('pj_bairro')} - ${v('pj_cid')}/${v('pj_uf')} - CEP ${v('pj_cep')}`, false, 'left'); y += 3;
-    let rep = `Representada neste ato por seu representante legal, ${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}, residente e domiciliado à ${v('p1_rua')}, ${v('p1_num')}${comp('p1_comp')}, ${v('p1_bairro')} - ${v('p1_cid')}/${v('p1_uf')} - CEP ${v('p1_cep')}`;
-    if (p2on) rep += `, ${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}, residente e domiciliado à ${v('p2_rua')}, ${v('p2_num')}${comp('p2_comp')}, ${v('p2_bairro')} - ${v('p2_cid')}/${v('p2_uf')} - CEP ${v('p2_cep')}`;
-    if (p3on) rep += ` e ${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}, residente e domiciliado à ${v('p3_rua')}, ${v('p3_num')}${comp('p3_comp')}, ${v('p3_bairro')} - ${v('p3_cid')}/${v('p3_uf')} - CEP ${v('p3_cep')}`;
+    const repParts3 = [];
+    if (v('p1_nome')) repParts3.push(`${v('p1_nome')}, portador do CPF nº ${v('p1_cpf')}, residente e domiciliado à ${v('p1_rua')}, ${v('p1_num')}${comp('p1_comp')}, ${v('p1_bairro')} - ${v('p1_cid')}/${v('p1_uf')} - CEP ${v('p1_cep')}`);
+    if (p2on && v('p2_nome')) repParts3.push(`${v('p2_nome')}, portador do CPF nº ${v('p2_cpf')}, residente e domiciliado à ${v('p2_rua')}, ${v('p2_num')}${comp('p2_comp')}, ${v('p2_bairro')} - ${v('p2_cid')}/${v('p2_uf')} - CEP ${v('p2_cep')}`);
+    if (p3on && v('p3_nome')) repParts3.push(`${v('p3_nome')}, portador do CPF nº ${v('p3_cpf')}, residente e domiciliado à ${v('p3_rua')}, ${v('p3_num')}${comp('p3_comp')}, ${v('p3_bairro')} - ${v('p3_cid')}/${v('p3_uf')} - CEP ${v('p3_cep')}`);
+    let rep = 'Representada neste ato por seu representante legal, ' + repParts3.join(', ');
     rep += '.';
     txt(rep);
   }
